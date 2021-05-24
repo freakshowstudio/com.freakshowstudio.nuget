@@ -1,12 +1,13 @@
-﻿namespace NugetForUnity
-{
-    using System.Collections.Generic;
-    using System.IO;
-    using System.IO.Compression;
-    using System.Linq;
-    using System.Xml;
-    using System.Xml.Linq;
+﻿using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
+using System.Linq;
+using System.Xml;
+using System.Xml.Linq;
 
+
+namespace FreakshowStudio.NugetForUnity.Editor
+{
     /// <summary>
     /// Represents a .nuspec file used to store metadata for a NuGet package.
     /// </summary>

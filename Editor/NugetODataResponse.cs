@@ -2,7 +2,8 @@
 using System.Linq;
 using System.Xml.Linq;
 
-namespace NugetForUnity
+
+namespace FreakshowStudio.NugetForUnity.Editor
 {
     /// <summary>
     /// Provides helper methods for parsing a NuGet server OData response.

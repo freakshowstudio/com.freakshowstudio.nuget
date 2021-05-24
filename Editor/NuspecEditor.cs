@@ -1,11 +1,14 @@
-﻿namespace NugetForUnity
-{
-    using System.Collections.Generic;
-    using System.IO;
-    using System.Linq;
-    using UnityEditor;
-    using UnityEngine;
+﻿using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
+using UnityEditor;
+
+using UnityEngine;
+
+
+namespace FreakshowStudio.NugetForUnity.Editor
+{
     /// <summary>
     /// Represents a custom editor inside the Unity editor that allows easy editting of a .nuspec file.
     /// </summary>
@@ -284,7 +287,7 @@
 
                 EditorGUILayout.Separator();
 
-                if (GUILayout.Button(string.Format("Save {0}", Path.GetFileName(filepath))))
+                if (GUILayout.Button($"Save {Path.GetFileName(filepath)}"))
                 {
                     nuspec.Save(filepath);
                 }
@@ -300,7 +303,7 @@
 
                 apiKey = EditorGUILayout.TextField(new GUIContent("API Key", "The API key to use when pushing the package to the server"), apiKey);
 
-                if (GUILayout.Button(string.Format("Push to Server")))
+                if (GUILayout.Button("Push to Server"))
                 {
                     NugetHelper.Push(nuspec, filepath, apiKey);
                 }

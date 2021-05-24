@@ -1,15 +1,18 @@
-﻿namespace NugetForUnity
-{
-    using System;
-    using System.Collections.Generic;
-    using System.Diagnostics;
-    using System.Linq;
-    using System.Text;
-    using System.Text.RegularExpressions;
-    using UnityEditor;
-    using UnityEngine;
-    using UnityEngine.Networking;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
 
+using UnityEditor;
+
+using UnityEngine;
+using UnityEngine.Networking;
+
+
+namespace FreakshowStudio.NugetForUnity.Editor
+{
     /// <summary>
     /// Represents the NuGet Package Manager Window in the Unity Editor.
     /// </summary>
@@ -19,7 +22,7 @@
         /// True when the NugetWindow has initialized. This is used to skip time-consuming reloading operations when the assembly is reloaded.
         /// </summary>
         [SerializeField]
-        private bool hasRefreshed = false;
+        private bool hasRefreshed;
 
         /// <summary>
         /// The current position of the scroll bar in the GUI.
@@ -222,7 +225,9 @@
 #if UNITY_2017_1_OR_NEWER // UnityWebRequest is not available in Unity 5.2, which is the currently the earliest version supported by NuGetForUnity.
             using (UnityWebRequest request = UnityWebRequest.Get(url))
             {
+#pragma warning disable 618
                 request.Send();
+#pragma warning restore 618
 #else
             using (WWW request = new WWW(url))
             {
@@ -240,7 +245,9 @@
 
                 string response = null;
 #if UNITY_2017_1_OR_NEWER
+#pragma warning disable 618
                 if (!request.isNetworkError && !request.isHttpError)
+#pragma warning restore 618
                 {
                     response = request.downloadHandler.text;
                 }
@@ -362,7 +369,7 @@
             }
             catch (Exception e)
             {
-                UnityEngine.Debug.LogErrorFormat("{0}", e.ToString());
+                UnityEngine.Debug.LogErrorFormat("{0}", e);
             }
             finally
             {
@@ -482,8 +489,6 @@
             scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
             EditorGUILayout.BeginVertical();
 
-            GUIStyle style = GetContrastStyle();
-
             if (filteredUpdatePackages != null && filteredUpdatePackages.Count > 0)
             {
                 DrawPackages(filteredUpdatePackages);
@@ -513,7 +518,7 @@
             EditorGUILayout.BeginVertical();
 
             List<NugetPackage> filteredInstalledPackages = FilteredInstalledPackages.ToList();
-            if (filteredInstalledPackages != null && filteredInstalledPackages.Count > 0)
+            if (filteredInstalledPackages.Count > 0)
             {
                 DrawPackages(filteredInstalledPackages);
             }
@@ -783,10 +788,13 @@
         /// Draws the given <see cref="NugetPackage"/>.
         /// </summary>
         /// <param name="package">The <see cref="NugetPackage"/> to draw.</param>
+        /// <param name="packageStyle"></param>
+        /// <param name="contrastStyle"></param>
         private void DrawPackage(NugetPackage package, GUIStyle packageStyle, GUIStyle contrastStyle)
         {
             IEnumerable<NugetPackage> installedPackages = NugetHelper.InstalledPackages;
-            var installed = installedPackages.FirstOrDefault(p => p.Id == package.Id);
+            var nugetPackages = installedPackages as NugetPackage[] ?? installedPackages.ToArray();
+            var installed = nugetPackages.FirstOrDefault(p => p.Id == package.Id);
 
             EditorGUILayout.BeginHorizontal();
             {
@@ -825,7 +833,7 @@
                     EditorStyles.label.fontSize = 16;
 
                     Vector2 idSize = EditorStyles.label.CalcSize(new GUIContent(package.Id));
-                    rect.y += (iconSize / 2 - idSize.y / 2) + padding;
+                    rect.y += (iconSize / 2f - idSize.y / 2f) + padding;
                     GUI.Label(rect, package.Id, EditorStyles.label);
                     rect.x += idSize.x;
 
@@ -833,7 +841,7 @@
                     EditorStyles.label.fontStyle = FontStyle.Normal;
 
                     Vector2 versionSize = EditorStyles.label.CalcSize(new GUIContent(package.Version));
-                    rect.y += (idSize.y - versionSize.y - padding / 2);
+                    rect.y += (idSize.y - versionSize.y - padding / 2f);
 
                     if (!string.IsNullOrEmpty(package.Authors))
                     {
@@ -860,7 +868,7 @@
                 GUILayout.Label(string.Format("Version {0}", package.Version));
 
 
-                if (installedPackages.Contains(package))
+                if (nugetPackages.Contains(package))
                 {
                     // This specific version is installed
                     if (GUILayout.Button("Uninstall"))
@@ -984,7 +992,7 @@
                                 builder.Append(string.Format(" {0} {1};", dependency.Id, dependency.Version));
                             }
                             EditorGUILayout.Space();
-                            EditorGUILayout.LabelField(string.Format("Depends on:{0}", builder.ToString()));
+                            EditorGUILayout.LabelField(string.Format("Depends on:{0}", builder));
                             EditorStyles.label.fontStyle = FontStyle.Normal;
                         }
 
@@ -1030,9 +1038,9 @@
                                 }
                             }
 
-                            if (!string.IsNullOrEmpty(package.LicenseUrl) && package.LicenseUrl != "http://your_license_url_here")
+                            if (!string.IsNullOrEmpty(package.LicenseUrl) && package.LicenseUrl != "https://your_license_url_here")
                             {
-                                // Creaete a box around the license button to keep it alligned with Clone button
+                                // Create a box around the license button to keep it aligned with Clone button
                                 EditorGUILayout.BeginHorizontal(normalButtonBoxStyle);
                                 // Show the license button
                                 if (GUILayout.Button("View License", GUILayout.ExpandWidth(false)))

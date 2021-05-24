@@ -1,15 +1,17 @@
-﻿namespace NugetForUnity
-{
-    using System;
-    using System.Collections.Generic;
-    using System.Diagnostics;
-    using System.IO;
-    using System.Linq;
-    using System.Net;
-    using System.Xml;
-    using System.Xml.Linq;
-    using Debug = UnityEngine.Debug;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Text;
+using System.Xml.Linq;
 
+using Debug = UnityEngine.Debug;
+
+
+namespace FreakshowStudio.NugetForUnity.Editor
+{
     /// <summary>
     /// Represents a NuGet Package Source (a "server").
     /// </summary>
@@ -148,7 +150,7 @@
                 catch (Exception e)
                 {
                     foundPackages = new List<NugetPackage>();
-                    Debug.LogErrorFormat("Unable to retrieve package list from {0}\n{1}", url, e.ToString());
+                    Debug.LogErrorFormat("Unable to retrieve package list from {0}\n{1}", url, e);
                 }
             }
 
@@ -187,23 +189,19 @@
                     NugetPackage localPackage = NugetPackage.FromNupkgFile(localPackagePath);
                     return localPackage;
                 }
-                else
-                {
-                    return null;
-                }
+
+                return null;
             }
-            else
+
+            string url = string.Format("{0}Packages(Id='{1}',Version='{2}')", ExpandedPath, package.Id, package.Version);
+            try
             {
-                string url = string.Format("{0}Packages(Id='{1}',Version='{2}')", ExpandedPath, package.Id, package.Version);
-                try
-                {
-                    return GetPackagesFromUrl(url, UserName, ExpandedPassword).First();
-                }
-                catch (Exception e)
-                {
-                    Debug.LogErrorFormat("Unable to retrieve package from {0}\n{1}", url, e.ToString());
-                    return null;
-                }
+                return GetPackagesFromUrl(url, UserName, ExpandedPassword).First();
+            }
+            catch (Exception e)
+            {
+                Debug.LogErrorFormat("Unable to retrieve package from {0}\n{1}", url, e);
+                return null;
             }
         }
 
@@ -223,7 +221,7 @@
         {
             if (IsLocalPath)
             {
-                return GetLocalPackages(searchTerm, includeAllVersions, includePrerelease, numberToGet, numberToSkip);
+                return GetLocalPackages(searchTerm, includeAllVersions, includePrerelease, numberToSkip);
             }
 
             //Example URL: "http://www.nuget.org/api/v2/Search()?$filter=IsLatestVersion&$orderby=Id&$skip=0&$top=30&searchTerm='newtonsoft'&targetFramework=''&includePrerelease=false";
@@ -270,9 +268,9 @@
             {
                 return GetPackagesFromUrl(url, UserName, ExpandedPassword);
             }
-            catch (System.Exception e)
+            catch (Exception e)
             {
-                Debug.LogErrorFormat("Unable to retrieve package list from {0}\n{1}", url, e.ToString());
+                Debug.LogErrorFormat("Unable to retrieve package list from {0}\n{1}", url, e);
                 return new List<NugetPackage>();
             }
         }
@@ -283,10 +281,9 @@
         /// <param name="searchTerm">The search term to use to filter packages. Defaults to the empty string.</param>
         /// <param name="includeAllVersions">True to include older versions that are not the latest version.</param>
         /// <param name="includePrerelease">True to include prerelease packages (alpha, beta, etc).</param>
-        /// <param name="numberToGet">The number of packages to fetch.</param>
         /// <param name="numberToSkip">The number of packages to skip before fetching.</param>
         /// <returns>The list of available packages.</returns>
-        private List<NugetPackage> GetLocalPackages(string searchTerm = "", bool includeAllVersions = false, bool includePrerelease = false, int numberToGet = 15, int numberToSkip = 0)
+        private List<NugetPackage> GetLocalPackages(string searchTerm = "", bool includeAllVersions = false, bool includePrerelease = false, int numberToSkip = 0)
         {
             List<NugetPackage> localPackages = new List<NugetPackage>();
 
@@ -353,6 +350,7 @@
         /// See here http://www.odata.org/documentation/odata-version-2-0/uri-conventions/
         /// </summary>
         /// <param name="url"></param>
+        /// <param name="username"></param>
         /// <param name="password"></param>
         /// <returns></returns>
         private List<NugetPackage> GetPackagesFromUrl(string url, string username, string password)
@@ -371,7 +369,7 @@
             ServicePointManager.ServerCertificateValidationCallback = null;
 
             // add anonymous handler
-            ServicePointManager.ServerCertificateValidationCallback += (sender, certificate, chain, policyErrors) => true;
+            ServicePointManager.ServerCertificateValidationCallback += (_, _, _, _) => true;
 
             using (Stream responseStream = NugetHelper.RequestUrl(url, username, password, timeOut: 5000))
             {
@@ -439,9 +437,10 @@
             List<NugetPackage> updates = new List<NugetPackage>();
 
             // check for updates in groups of 10 instead of all of them, since that causes servers to throw errors for queries that are too long
-            for (int i = 0; i < installedPackages.Count(); i += 10)
+            var nugetPackages = installedPackages as NugetPackage[] ?? installedPackages.ToArray();
+            for (int i = 0; i < nugetPackages.Count(); i += 10)
             {
-                var packageGroup = installedPackages.Skip(i).Take(10);
+                var packageGroup = nugetPackages.Skip(i).Take(10);
 
                 string packageIds = string.Empty;
                 string versions = string.Empty;
@@ -474,7 +473,7 @@
                     var newPackages = GetPackagesFromUrl(url, UserName, ExpandedPassword);
                     updates.AddRange(newPackages);
                 }
-                catch (System.Exception e)
+                catch (Exception e)
                 {
                     WebException webException = e as WebException;
                     HttpWebResponse webResponse = webException != null ? webException.Response as HttpWebResponse : null;
@@ -482,10 +481,10 @@
                     {
                         // Some web services, such as VSTS don't support the GetUpdates API. Attempt to retrieve updates via FindPackagesById.
                         NugetHelper.LogVerbose("{0} not found. Falling back to FindPackagesById.", url);
-                        return GetUpdatesFallback(installedPackages, includePrerelease, includeAllVersions, targetFrameworks, versionContraints);
+                        return GetUpdatesFallback(nugetPackages, includePrerelease, includeAllVersions, targetFrameworks, versionContraints);
                     }
 
-                    Debug.LogErrorFormat("Unable to retrieve package list from {0}\n{1}", url, e.ToString());
+                    Debug.LogErrorFormat("Unable to retrieve package list from {0}\n{1}", url, e);
                 }
             }
 
@@ -494,8 +493,7 @@
             {
                 if (x.Id == y.Id)
                     return -1 * x.CompareVersion(y.Version);
-                else
-                    return x.Id.CompareTo(y.Id);
+                return string.Compare(x.Id, y.Id, StringComparison.Ordinal);
             });
 
 #if TEST_GET_UPDATES_FALLBACK
@@ -509,30 +507,31 @@
             return updates;
         }
 
+        // ReSharper disable once UnusedMember.Local
         private static void ComparePackageLists(List<NugetPackage> updates, List<NugetPackage> updatesReplacement, string errorMessageToDisplayIfListsDoNotMatch)
         {
-            System.Text.StringBuilder matchingComparison = new System.Text.StringBuilder();
-            System.Text.StringBuilder missingComparison = new System.Text.StringBuilder();
+            StringBuilder matchingComparison = new StringBuilder();
+            StringBuilder missingComparison = new StringBuilder();
             foreach (NugetPackage package in updates)
             {
                 if (updatesReplacement.Contains(package))
                 {
                     matchingComparison.Append(matchingComparison.Length == 0 ? "Matching: " : ", ");
-                    matchingComparison.Append(package.ToString());
+                    matchingComparison.Append(package);
                 }
                 else
                 {
                     missingComparison.Append(missingComparison.Length == 0 ? "Missing: " : ", ");
-                    missingComparison.Append(package.ToString());
+                    missingComparison.Append(package);
                 }
             }
-            System.Text.StringBuilder extraComparison = new System.Text.StringBuilder();
+            StringBuilder extraComparison = new StringBuilder();
             foreach (NugetPackage package in updatesReplacement)
             {
                 if (!updates.Contains(package))
                 {
                     extraComparison.Append(extraComparison.Length == 0 ? "Extra: " : ", ");
-                    extraComparison.Append(package.ToString());
+                    extraComparison.Append(package);
                 }
             }
             if (missingComparison.Length > 0 || extraComparison.Length > 0)

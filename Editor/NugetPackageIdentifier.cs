@@ -1,7 +1,11 @@
-﻿namespace NugetForUnity
-{
-    using System;
+﻿using System;
+using System.Diagnostics.CodeAnalysis;
 
+using UnityEngine;
+
+
+namespace FreakshowStudio.NugetForUnity.Editor
+{
     /// <summary>
     /// Represents an identifier for a NuGet package.  It contains only an ID and a Version number.
     /// </summary>
@@ -20,27 +24,27 @@
         /// <summary>
         /// Gets a value indicating whether this is a prerelease package or an official release package.
         /// </summary>
-        public bool IsPrerelease { get { return Version.Contains("-"); } }
+        public bool IsPrerelease => Version.Contains("-");
 
         /// <summary>
         /// Gets a value indicating whether the version number specified is a range of values.
         /// </summary>
-        public bool HasVersionRange { get { return Version.StartsWith("(") || Version.StartsWith("["); } }
+        public bool HasVersionRange => Version.StartsWith("(") || Version.StartsWith("[");
 
         /// <summary>
         /// Gets a value indicating whether the minimum version number (only valid when HasVersionRange is true) is inclusive (true) or exclusive (false).
         /// </summary>
-        public bool IsMinInclusive { get { return Version.StartsWith("["); } }
+        public bool IsMinInclusive => Version.StartsWith("[");
 
         /// <summary>
         /// Gets a value indicating whether the maximum version number (only valid when HasVersionRange is true) is inclusive (true) or exclusive (false).
         /// </summary>
-        public bool IsMaxInclusive { get { return Version.EndsWith("]"); } }
+        public bool IsMaxInclusive => Version.EndsWith("]");
 
         /// <summary>
         /// Gets the minimum version number of the NuGet package. Only valid when HasVersionRange is true.
         /// </summary>
-        public string MinimumVersion { get { return Version.TrimStart(new[] { '[', '(' }).TrimEnd(new[] { ']', ')' }).Split(new[] { ',' })[0].Trim(); } }
+        public string MinimumVersion => Version.TrimStart('[', '(').TrimEnd(']', ')').Split(',')[0].Trim();
 
         /// <summary>
         /// Gets the maximum version number of the NuGet package. Only valid when HasVersionRange is true.
@@ -50,13 +54,13 @@
             get 
             {
                 // if there is no MaxVersion specified, but the Max is Inclusive, then it is an EXACT version match with the stored MINIMUM
-                string[] minMax = Version.TrimStart(new[] { '[', '(' }).TrimEnd(new[] { ']', ')' }).Split(new[] { ',' });
+                string[] minMax = Version.TrimStart('[', '(').TrimEnd(']', ')').Split(',');
                 return minMax.Length == 2 ? minMax[1].Trim() : null; 
             } 
         }
 
         /// <summary>
-        /// Initializes a new instance of a <see cref="NugetPackageIdentifider"/> with empty ID and Version.
+        /// Initializes a new instance of a <see cref="NugetPackageIdentifier"/> with empty ID and Version.
         /// </summary>
         public NugetPackageIdentifier()
         {
@@ -65,7 +69,7 @@
         }
 
         /// <summary>
-        /// Initializes a new instance of a <see cref="NugetPackageIdentifider"/> with the given ID and Version.
+        /// Initializes a new instance of a <see cref="NugetPackageIdentifier"/> with the given ID and Version.
         /// </summary>
         /// <param name="id">The ID of the package.</param>
         /// <param name="version">The version number of the package.</param>
@@ -95,7 +99,7 @@
         {
             if (first.Id != second.Id)
             {
-                return string.Compare(first.Id, second.Id) < 0;
+                return string.CompareOrdinal(first.Id, second.Id) < 0;
             }
 
             return CompareVersions(first.Version, second.Version) < 0;
@@ -111,7 +115,7 @@
         {
             if (first.Id != second.Id)
             {
-                return string.Compare(first.Id, second.Id) > 0;
+                return string.CompareOrdinal(first.Id, second.Id) > 0;
             }
 
             return CompareVersions(first.Version, second.Version) > 0;
@@ -127,7 +131,7 @@
         {
             if (first.Id != second.Id)
             {
-                return string.Compare(first.Id, second.Id) <= 0;
+                return string.CompareOrdinal(first.Id, second.Id) <= 0;
             }
 
             return CompareVersions(first.Version, second.Version) <= 0;
@@ -143,7 +147,7 @@
         {
             if (first.Id != second.Id)
             {
-                return string.Compare(first.Id, second.Id) >= 0;
+                return String.CompareOrdinal(first.Id, second.Id) >= 0;
             }
 
             return CompareVersions(first.Version, second.Version) >= 0;
@@ -211,13 +215,14 @@
         /// Gets the hashcode for this <see cref="NugetPackageIdentifier"/>.
         /// </summary>
         /// <returns>The hashcode for this instance.</returns>
+        [SuppressMessage("ReSharper", "NonReadonlyMemberInGetHashCode")]
         public override int GetHashCode()
         {
             return Id.GetHashCode() ^ Version.GetHashCode();
         }
 
         /// <summary>
-        /// Returns the string representation of this <see cref="NugetPackageIdentifer"/> in the form "{ID}.{Version}".
+        /// Returns the string representation of this <see cref="NugetPackageIdentifier"/> in the form "{ID}.{Version}".
         /// </summary>
         /// <returns>A string in the form "{ID}.{Version}".</returns>
         public override string ToString()
@@ -229,7 +234,7 @@
         /// Determines if the given <see cref="NugetPackageIdentifier"/>'s version is in the version range of this <see cref="NugetPackageIdentifier"/>.
         /// See here: https://docs.nuget.org/ndocs/create-packages/dependency-versions
         /// </summary>
-        /// <param name="otherVersion">The <see cref="NugetPackageIdentifier"/> whose version to check if is in the range.</param>
+        /// <param name="otherPackage">The <see cref="NugetPackageIdentifier"/> whose version to check if is in the range.</param>
         /// <returns>True if the given version is in the range, otherwise false.</returns>
         public bool InRange(NugetPackageIdentifier otherPackage)
         {
@@ -424,19 +429,19 @@
             }
             catch (Exception)
             {
-                UnityEngine.Debug.LogErrorFormat("Compare Error: {0} {1}", versionA, versionB);
+                Debug.LogErrorFormat("Compare Error: {0} {1}", versionA, versionB);
                 return -1;
             }
         }
 
         public int CompareTo(NugetPackage other)
         {
-            if (this.Id != other.Id)
+            if (Id != other.Id)
             {
-                return string.Compare(this.Id, other.Id);
+                return string.CompareOrdinal(Id, other.Id);
             }
 
-            return CompareVersions(this.Version, other.Version);
+            return CompareVersions(Version, other.Version);
         }
     }
 }

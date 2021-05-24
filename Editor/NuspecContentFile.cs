@@ -1,4 +1,4 @@
-﻿namespace NugetForUnity
+﻿namespace FreakshowStudio.NugetForUnity.Editor
 {
     /// <summary>
     /// Represents a file entry inside a .nuspec file.

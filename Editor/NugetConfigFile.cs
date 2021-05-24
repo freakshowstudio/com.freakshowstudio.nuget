@@ -1,13 +1,15 @@
-﻿namespace NugetForUnity
-{
-    using System;
-    using System.Collections.Generic;
-    using System.IO;
-    using System.Linq;
-    using System.Text;
-    using System.Xml.Linq;
-    using UnityEditor;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Xml.Linq;
 
+using UnityEditor;
+
+
+namespace FreakshowStudio.NugetForUnity.Editor
+{
     /// <summary>
     /// Represents a NuGet.config file that stores the NuGet settings.
     /// See here: https://docs.nuget.org/consume/nuget-config-file

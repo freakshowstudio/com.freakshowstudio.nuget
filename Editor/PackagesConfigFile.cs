@@ -1,11 +1,15 @@
-﻿namespace NugetForUnity
-{
-    using System.Collections.Generic;
-    using System.IO;
-    using System.Xml.Linq;
-    using UnityEditor;
-    using UnityEngine;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Xml.Linq;
 
+using UnityEditor;
+
+using UnityEngine;
+
+
+namespace FreakshowStudio.NugetForUnity.Editor
+{
     /// <summary>
     /// Represents a package.config file that holds the NuGet package dependencies for the project.
     /// </summary>
@@ -77,12 +81,15 @@
             // Force disable
             NugetHelper.DisableWSAPExportSetting(filepath, false);
 
-            foreach (XElement packageElement in packagesFile.Root.Elements())
+            if (packagesFile.Root == null) return configFile;
+
+            foreach (XElement packageElement in
+                packagesFile.Root.Elements())
             {
                 NugetPackage package = new NugetPackage
                 {
-                    Id = packageElement.Attribute("id").Value,
-                    Version = packageElement.Attribute("version").Value
+                    Id = packageElement.Attribute("id")?.Value,
+                    Version = packageElement.Attribute("version")?.Value,
                 };
                 configFile.Packages.Add(package);
             }
@@ -102,22 +109,20 @@
                 {
                     return 0;
                 }
-                else if (x.Id == null)
+
+                if (x.Id == null)
                 {
                     return -1;
                 }
-                else if (y.Id == null)
+
+                if (y.Id == null)
                 {
                     return 1;
                 }
-                else if (x.Id == y.Id)
-                {
-                    return x.Version.CompareTo(y.Version);
-                }
-                else
-                {
-                    return x.Id.CompareTo(y.Id);
-                }
+
+                return x.Id == y.Id
+                    ? string.Compare(x.Version, y.Version, StringComparison.Ordinal)
+                    : string.Compare(x.Id, y.Id, StringComparison.Ordinal);
             });
 
             XDocument packagesFile = new XDocument();
@@ -127,7 +132,7 @@
                 XElement packageElement = new XElement("package");
                 packageElement.Add(new XAttribute("id", package.Id));
                 packageElement.Add(new XAttribute("version", package.Version));
-                packagesFile.Root.Add(packageElement);
+                packagesFile.Root?.Add(packageElement);
             }
 
             // remove the read only flag on the file, if there is one.

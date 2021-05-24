@@ -1,8 +1,9 @@
-﻿namespace NugetForUnity
-{
-    using System;
-    using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
+
+namespace FreakshowStudio.NugetForUnity.Editor
+{
     /// <summary>
     /// Represents a package available from NuGet.
     /// </summary>
@@ -129,7 +130,10 @@
             {
                 package.RepositoryType = (RepositoryType)Enum.Parse(typeof(RepositoryType), nuspec.RepositoryType, true);
             }
-            catch (Exception) { }
+            catch (Exception)
+            {
+                // ignored
+            }
 
             package.RepositoryBranch = nuspec.RepositoryBranch;
             package.RepositoryCommit = nuspec.RepositoryCommit;

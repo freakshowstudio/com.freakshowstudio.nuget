@@ -1,4 +1,4 @@
-﻿namespace NugetForUnity
+﻿namespace FreakshowStudio.NugetForUnity.Editor
 {
     public enum RepositoryType
     {

@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 
-namespace NugetForUnity
+
+namespace FreakshowStudio.NugetForUnity.Editor
 {
     /// <summary>
     /// Represents a grouping of items by framework type and version.

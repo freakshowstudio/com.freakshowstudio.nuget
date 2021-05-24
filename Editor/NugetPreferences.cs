@@ -1,8 +1,10 @@
-﻿namespace NugetForUnity
-{
-    using UnityEditor;
-    using UnityEngine;
+﻿using UnityEditor;
 
+using UnityEngine;
+
+
+namespace FreakshowStudio.NugetForUnity.Editor
+{
     /// <summary>
     /// Handles the displaying, editing, and saving of the preferences for NuGet For Unity.
     /// </summary>
@@ -16,12 +18,14 @@
         /// <summary>
         /// The current position of the scroll bar in the GUI.
         /// </summary>
-        private static Vector2 scrollPosition;
+        private static Vector2 _scrollPosition;
 
         /// <summary>
         /// Draws the preferences GUI inside the Unity preferences window in the Editor.
         /// </summary>
+#pragma warning disable 618
         [PreferenceItem("NuGet For Unity")]
+#pragma warning restore 618
         public static void PreferencesGUI()
         {
             bool preferencesChangedThisFrame = false;
@@ -56,7 +60,7 @@
 
             EditorGUILayout.LabelField("Package Sources:");
 
-            scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
+            _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
 
             NugetPackageSource sourceToMoveUp = null;
             NugetPackageSource sourceToMoveDown = null;
@@ -140,17 +144,17 @@
 
                     EditorGUILayout.BeginHorizontal();
                     {
-                        if (GUILayout.Button(string.Format("Move Up")))
+                        if (GUILayout.Button("Move Up"))
                         {
                             sourceToMoveUp = source;
                         }
 
-                        if (GUILayout.Button(string.Format("Move Down")))
+                        if (GUILayout.Button("Move Down"))
                         {
                             sourceToMoveDown = source;
                         }
 
-                        if (GUILayout.Button(string.Format("Remove")))
+                        if (GUILayout.Button("Remove"))
                         {
                             sourceToRemove = source;
                         }
@@ -188,7 +192,7 @@
                 preferencesChangedThisFrame = true;
             }
 
-            if (GUILayout.Button(string.Format("Add New Source")))
+            if (GUILayout.Button("Add New Source"))
             {
                 NugetHelper.NugetConfigFile.PackageSources.Add(new NugetPackageSource("New Source", "source_path"));
                 preferencesChangedThisFrame = true;
@@ -196,7 +200,7 @@
 
             EditorGUILayout.EndScrollView();
 
-            if (GUILayout.Button(string.Format("Reset To Default")))
+            if (GUILayout.Button("Reset To Default"))
             {
                 NugetConfigFile.CreateDefaultFile(NugetHelper.NugetConfigFilePath);
                 NugetHelper.LoadNugetConfigFile();

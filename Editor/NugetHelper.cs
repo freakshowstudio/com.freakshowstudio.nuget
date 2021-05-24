@@ -1,21 +1,24 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.IO;
+using System.IO.Compression;
+using System.Linq;
+using System.Net;
+using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
+
+using UnityEditor;
+
+using UnityEngine;
 
 
-[assembly: InternalsVisibleTo("NuGet.Tests.Editor")]
-namespace NugetForUnity
+[assembly: InternalsVisibleTo("com.freakshowstudio.NugetForUnity.Tests.Editor")]
+namespace FreakshowStudio.NugetForUnity.Editor
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Diagnostics;
-    using System.IO;
-    using System.IO.Compression;
-    using System.Linq;
-    using System.Net;
-    using System.Security.Cryptography;
-    using System.Text;
-    using System.Text.RegularExpressions;
-    using UnityEditor;
-    using UnityEngine;
     using Debug = UnityEngine.Debug;
 
     /// <summary>
@@ -28,7 +31,7 @@ namespace NugetForUnity
     [InitializeOnLoad]
     public static class NugetHelper
     {
-        private static bool insideInitializeOnLoad = false;
+        private static bool insideInitializeOnLoad;
 
         /// <summary>
         /// The path to the nuget.config file.
@@ -58,7 +61,7 @@ namespace NugetForUnity
         /// <summary>
         /// Backing field for the packages.config file.
         /// </summary>
-        private static PackagesConfigFile packagesConfigFile;
+        private static PackagesConfigFile _packagesConfigFile;
 
         /// <summary>
         /// Gets the loaded packages.config file that hold the dependencies for the project.
@@ -67,12 +70,12 @@ namespace NugetForUnity
         {
             get
             {
-                if (packagesConfigFile == null)
+                if (_packagesConfigFile == null)
                 {
-                    packagesConfigFile = PackagesConfigFile.Load(PackagesConfigFilePath);
+                    _packagesConfigFile = PackagesConfigFile.Load(PackagesConfigFilePath);
                 }
 
-                return packagesConfigFile;
+                return _packagesConfigFile;
             }
         }
 
@@ -232,8 +235,8 @@ namespace NugetForUnity
 
             LogVerbose("Running: {0} \nArgs: {1}", files[0], arguments);
 
-            string fileName = string.Empty;
-            string commandLine = string.Empty;
+            string fileName;
+            string commandLine;
 
 #if UNITY_EDITOR_OSX
             // ATTENTION: you must install mono running on your mac, we use this mono to run `nuget.exe`
@@ -258,22 +261,28 @@ namespace NugetForUnity
                     StandardOutputEncoding = Encoding.GetEncoding(850)
                 });
 
-            if (!process.WaitForExit(TimeOut))
+            if (process != null && !process.WaitForExit(TimeOut))
             {
                 Debug.LogWarning("NuGet took too long to finish.  Killing operation.");
                 process.Kill();
             }
 
-            string error = process.StandardError.ReadToEnd();
-            if (!string.IsNullOrEmpty(error))
+            if (process != null)
             {
-                Debug.LogError(error);
+                string error = process.StandardError.ReadToEnd();
+                if (!string.IsNullOrEmpty(error))
+                {
+                    Debug.LogError(error);
+                }
             }
 
-            string output = process.StandardOutput.ReadToEnd();
-            if (logOuput && !string.IsNullOrEmpty(output))
+            if (process != null)
             {
-                Debug.Log(output);
+                string output = process.StandardOutput.ReadToEnd();
+                if (logOuput && !string.IsNullOrEmpty(output))
+                {
+                    Debug.Log(output);
+                }
             }
         }
 
@@ -400,23 +409,33 @@ namespace NugetForUnity
 
                 // go through the library folders in descending order (highest to lowest version)
                 IEnumerable<DirectoryInfo> libDirectories = Directory.GetDirectories(packageInstallDirectory + "/lib").Select(s => new DirectoryInfo(s));
-                var targetFrameworks = libDirectories
+                var directoryInfos = libDirectories as DirectoryInfo[] ?? libDirectories.ToArray();
+                var targetFrameworks = directoryInfos
                     .Select(x => x.Name.ToLower());
 
                 bool isAlreadyImported = IsAlreadyImportedInEngine(package);
                 string bestTargetFramework = TryGetBestTargetFrameworkForCurrentSettings(targetFrameworks);
                 if (!isAlreadyImported && (bestTargetFramework != null))
                 {
-                    DirectoryInfo bestLibDirectory = libDirectories
+                    DirectoryInfo bestLibDirectory = directoryInfos
                         .First(x => FrameworkNamesAreEqual(x.Name, bestTargetFramework));
 
                     if (bestTargetFramework == "unity" ||
                         bestTargetFramework == "net35-unity full v3.5" ||
                         bestTargetFramework == "net35-unity subset v3.5")
                     {
-                        selectedDirectories.Add(Path.Combine(bestLibDirectory.Parent.FullName, "unity"));
-                        selectedDirectories.Add(Path.Combine(bestLibDirectory.Parent.FullName, "net35-unity full v3.5"));
-                        selectedDirectories.Add(Path.Combine(bestLibDirectory.Parent.FullName, "net35-unity subset v3.5"));
+                        if (bestLibDirectory.Parent != null)
+                        {
+                            selectedDirectories.Add(
+                                Path.Combine(bestLibDirectory.Parent.FullName,
+                                    "unity"));
+                            selectedDirectories.Add(
+                                Path.Combine(bestLibDirectory.Parent.FullName,
+                                    "net35-unity full v3.5"));
+                            selectedDirectories.Add(
+                                Path.Combine(bestLibDirectory.Parent.FullName,
+                                    "net35-unity subset v3.5"));
+                        }
                     }
                     else
                     {
@@ -430,11 +449,10 @@ namespace NugetForUnity
                 }
 
                 // delete all of the libaries except for the selected one
-                foreach (DirectoryInfo directory in libDirectories)
+                foreach (DirectoryInfo directory in directoryInfos)
                 {
                     bool validDirectory = selectedDirectories
-                        .Where(d => string.Compare(d, directory.FullName, ignoreCase: true) == 0)
-                        .Any();
+                        .Any(d => string.Compare(d, directory.FullName, StringComparison.OrdinalIgnoreCase) == 0);
 
                     if (!validDirectory)
                     {
@@ -517,7 +535,7 @@ namespace NugetForUnity
                     }
                     catch (Exception e)
                     {
-                        Debug.LogWarningFormat("{0} couldn't be moved. \n{1}", newFilePath, e.ToString());
+                        Debug.LogWarningFormat("{0} couldn't be moved. \n{1}", newFilePath, e);
                     }
                 }
 
@@ -538,7 +556,7 @@ namespace NugetForUnity
                     }
                     catch (Exception e)
                     {
-                        Debug.LogWarningFormat("{0} couldn't be moved. \n{1}", newDirectoryPath, e.ToString());
+                        Debug.LogWarningFormat("{0} couldn't be moved. \n{1}", newDirectoryPath, e);
                     }
                 }
 
@@ -557,21 +575,21 @@ namespace NugetForUnity
             return isAlreadyImported;
         }
 
-        private static HashSet<string> alreadyImportedLibs = null;
+        private static HashSet<string> _alreadyImportedLibs;
         private static HashSet<string> GetAlreadyImportedLibs()
         {
-            if (alreadyImportedLibs == null)
+            if (_alreadyImportedLibs == null)
             {
                 string[] lookupPaths = GetAllLookupPaths();
                 IEnumerable<string> libNames = lookupPaths
                     .SelectMany(directory => Directory.EnumerateFiles(directory, "*.dll", SearchOption.AllDirectories))
                     .Select(Path.GetFileName)
                     .Select(p => Path.ChangeExtension(p, null));
-                alreadyImportedLibs = new HashSet<string>(libNames);
-                LogVerbose("Already imported libs: {0}", string.Join(", ", alreadyImportedLibs));
+                _alreadyImportedLibs = new HashSet<string>(libNames);
+                LogVerbose("Already imported libs: {0}", string.Join(", ", _alreadyImportedLibs));
             }
 
-            return alreadyImportedLibs;
+            return _alreadyImportedLibs;
         }
 
         private static string[] GetAllLookupPaths()
@@ -581,7 +599,7 @@ namespace NugetForUnity
                 // MacOS directory layout
                 Path.Combine(executablePath, "Contents"),
                 // Windows directory layout
-                Path.Combine(Directory.GetParent(executablePath).FullName, "Data")
+                Path.Combine(Directory.GetParent(executablePath)?.FullName ?? string.Empty, "Data")
             };
             var relativePaths = new[] {
                 Path.Combine("NetStandard",  "compat"),
@@ -619,13 +637,13 @@ namespace NugetForUnity
 
         private struct UnityVersion : IComparable<UnityVersion>
         {
-            public int Major;
-            public int Minor;
-            public int Revision;
-            public char Release;
-            public int Build;
+            public readonly int Major;
+            public readonly int Minor;
+            public readonly int Revision;
+            public readonly char Release;
+            public readonly int Build;
 
-            public static UnityVersion Current = new UnityVersion(Application.unityVersion);
+            public static readonly UnityVersion Current = new UnityVersion(Application.unityVersion);
 
             public UnityVersion(string version)
             {
@@ -667,13 +685,13 @@ namespace NugetForUnity
         }
 
         private struct PriorityFramework { public int Priority; public string Framework; }
-        private static readonly string[] unityFrameworks = new string[] { "unity" };
-        private static readonly string[] netStandardFrameworks = new string[] {
+        private static readonly string[] UnityFrameworks = { "unity" };
+        private static readonly string[] NetStandardFrameworks = {
             "netstandard20", "netstandard16", "netstandard15", "netstandard14", "netstandard13", "netstandard12", "netstandard11", "netstandard10" };
-        private static readonly string[] net4Unity2018Frameworks = new string[] { "net471", "net47" };
-        private static readonly string[] net4Unity2017Frameworks = new string[] { "net462", "net461", "net46", "net452", "net451", "net45", "net403", "net40", "net4" };
-        private static readonly string[] net3Frameworks = new string[] { "net35-unity full v3.5", "net35-unity subset v3.5", "net35", "net20", "net11" };
-        private static readonly string[] defaultFrameworks = new string[] { string.Empty };
+        private static readonly string[] Net4Unity2018Frameworks = { "net471", "net47" };
+        private static readonly string[] Net4Unity2017Frameworks = { "net462", "net461", "net46", "net452", "net451", "net45", "net403", "net40", "net4" };
+        private static readonly string[] Net3Frameworks = { "net35-unity full v3.5", "net35-unity subset v3.5", "net35", "net20", "net11" };
+        private static readonly string[] DefaultFrameworks = { string.Empty };
 
         public static string TryGetBestTargetFrameworkForCurrentSettings(IEnumerable<string> targetFrameworks)
         {
@@ -682,35 +700,35 @@ namespace NugetForUnity
             bool using46 = intDotNetVersion == 3; // NET_4_6 = 3 in Unity 5.6 and Unity 2017.1 - use the hard-coded int value to ensure it works in earlier versions of Unity
             bool usingStandard2 = intDotNetVersion == 6; // using .net standard 2.0
 
-            var frameworkGroups = new List<string[]> { unityFrameworks };
+            var frameworkGroups = new List<string[]> { UnityFrameworks };
 
             if (usingStandard2)
             {
-                frameworkGroups.Add(netStandardFrameworks);
+                frameworkGroups.Add(NetStandardFrameworks);
             }
             else if (using46)
             {
                 if (UnityVersion.Current.Major >= 2018)
                 {
-                    frameworkGroups.Add(net4Unity2018Frameworks);
+                    frameworkGroups.Add(Net4Unity2018Frameworks);
                 }
 
                 if (UnityVersion.Current.Major >= 2017)
                 {
-                    frameworkGroups.Add(net4Unity2017Frameworks);
+                    frameworkGroups.Add(Net4Unity2017Frameworks);
                 }
 
-                frameworkGroups.Add(net3Frameworks);
-                frameworkGroups.Add(netStandardFrameworks);
+                frameworkGroups.Add(Net3Frameworks);
+                frameworkGroups.Add(NetStandardFrameworks);
             }
             else
             {
-                frameworkGroups.Add(net3Frameworks);
+                frameworkGroups.Add(Net3Frameworks);
             }
 
-            frameworkGroups.Add(defaultFrameworks);
+            frameworkGroups.Add(DefaultFrameworks);
 
-            Func<string, int> getTfmPriority = (string tfm) =>
+            Func<string, int> getTfmPriority = tfm =>
             {
                 for (int i = 0; i < frameworkGroups.Count; ++i)
                 {
@@ -825,7 +843,7 @@ namespace NugetForUnity
                 }
                 catch (Exception e)
                 {
-                    Debug.LogWarningFormat("{0} couldn't be moved to {1}. It may be a native plugin already locked by Unity. Please trying closing Unity and manually moving it. \n{2}", file.ToString(), newFilePath, e.ToString());
+                    Debug.LogWarningFormat("{0} couldn't be moved to {1}. It may be a native plugin already locked by Unity. Please trying closing Unity and manually moving it. \n{2}", file, newFilePath, e);
                 }
             }
 
@@ -960,14 +978,16 @@ namespace NugetForUnity
         /// <param name="packagesToUpdate">The list of all packages currently installed.</param>
         public static void UpdateAll(IEnumerable<NugetPackage> updates, IEnumerable<NugetPackage> packagesToUpdate)
         {
-            float progressStep = 1.0f / updates.Count();
+            var packages = updates as NugetPackage[] ?? updates.ToArray();
+            float progressStep = 1.0f / packages.Count();
             float currentProgress = 0;
+            var toUpdate = packagesToUpdate as NugetPackage[] ?? packagesToUpdate.ToArray();
 
-            foreach (NugetPackage update in updates)
+            foreach (NugetPackage update in packages)
             {
                 EditorUtility.DisplayProgressBar(string.Format("Updating to {0} {1}", update.Id, update.Version), "Installing All Updates", currentProgress);
 
-                NugetPackage installedPackage = packagesToUpdate.FirstOrDefault(p => p.Id == update.Id);
+                NugetPackage installedPackage = toUpdate.FirstOrDefault(p => p.Id == update.Id);
                 if (installedPackage != null)
                 {
                     Update(installedPackage, update, false);
@@ -1080,11 +1100,12 @@ namespace NugetForUnity
         public static List<NugetPackage> GetUpdates(IEnumerable<NugetPackage> packagesToUpdate, bool includePrerelease = false, bool includeAllVersions = false, string targetFrameworks = "", string versionContraints = "")
         {
             List<NugetPackage> packages = new List<NugetPackage>();
+            var nugetPackages = packagesToUpdate as NugetPackage[] ?? packagesToUpdate.ToArray();
 
             // Loop through all active sources and combine them into a single list
             foreach (NugetPackageSource source in packageSources.Where(s => s.IsEnabled))
             {
-                List<NugetPackage> newPackages = source.GetUpdates(packagesToUpdate, includePrerelease, includeAllVersions, targetFrameworks, versionContraints);
+                List<NugetPackage> newPackages = source.GetUpdates(nugetPackages, includePrerelease, includeAllVersions, targetFrameworks, versionContraints);
                 packages.AddRange(newPackages);
                 packages = packages.Distinct().ToList();
             }
@@ -1124,7 +1145,7 @@ namespace NugetForUnity
         /// <returns>The best <see cref="NugetPackage"/> match, if there is one, otherwise null.</returns>
         private static NugetPackage GetInstalledPackage(NugetPackageIdentifier packageId)
         {
-            NugetPackage installedPackage = null;
+            NugetPackage installedPackage;
 
             if (installedPackages.TryGetValue(packageId.Id, out installedPackage))
             {
@@ -1161,7 +1182,7 @@ namespace NugetForUnity
 
             if (NugetHelper.NugetConfigFile.InstallFromCache)
             {
-                string cachedPackagePath = System.IO.Path.Combine(NugetHelper.PackOutputDirectory, string.Format("./{0}.{1}.nupkg", packageId.Id, packageId.Version));
+                string cachedPackagePath = Path.Combine(PackOutputDirectory, string.Format("./{0}.{1}.nupkg", packageId.Id, packageId.Version));
 
                 if (File.Exists(cachedPackagePath))
                 {
@@ -1294,7 +1315,7 @@ namespace NugetForUnity
                 return true;
             }
 
-            NugetPackage installedPackage = null;
+            NugetPackage installedPackage;
             if (installedPackages.TryGetValue(package.Id, out installedPackage))
             {
                 if (installedPackage < package)
@@ -1313,7 +1334,7 @@ namespace NugetForUnity
                 return true;
             }
 
-            bool installSuccess = false;
+            bool installSuccess;
             try
             {
                 LogVerbose("Installing: {0} {1}", package.Id, package.Version);
@@ -1370,7 +1391,7 @@ namespace NugetForUnity
                         ServicePointManager.ServerCertificateValidationCallback = null;
 
                         // add anonymous handler
-                        ServicePointManager.ServerCertificateValidationCallback += (sender, certificate, chain, policyErrors) => true;
+                        ServicePointManager.ServerCertificateValidationCallback += (_, _, _, _) => true;
 
                         LogVerbose("Downloading package {0} {1}", package.Id, package.Version);
 
@@ -1444,7 +1465,7 @@ namespace NugetForUnity
             catch (Exception e)
             {
                 WarnIfDotNetAuthenticationIssue(e);
-                Debug.LogErrorFormat("Unable to install package {0} {1}\n{2}", package.Id, package.Version, e.ToString());
+                Debug.LogErrorFormat("Unable to install package {0} {1}\n{2}", package.Id, package.Version, e);
                 installSuccess = false;
             }
             finally
@@ -1459,6 +1480,7 @@ namespace NugetForUnity
             return installSuccess;
         }
 
+        [SuppressMessage("ReSharper", "UnusedParameter.Local")]
         private static void WarnIfDotNetAuthenticationIssue(Exception e)
         {
 #if !NET_4_6
@@ -1511,6 +1533,7 @@ namespace NugetForUnity
         /// Get the specified URL from the web. Throws exceptions if the request fails.
         /// </summary>
         /// <param name="url">URL that will be loaded.</param>
+        /// <param name="userName"></param>
         /// <param name="password">Password that will be passed in the Authorization header or the request. If null, authorization is omitted.</param>
         /// <param name="timeOut">Timeout in milliseconds or null to use the default timeout values of HttpWebRequest.</param>
         /// <returns>Stream containing the result.</returns>
@@ -1538,7 +1561,7 @@ namespace NugetForUnity
                 // Send password as described by https://docs.microsoft.com/en-us/vsts/integrate/get-started/rest/basics.
                 // This works with Visual Studio Team Services, but hasn't been tested with other authentication schemes so there may be additional work needed if there
                 // are different kinds of authentication.
-                getRequest.Headers.Add("Authorization", "Basic " + Convert.ToBase64String(System.Text.ASCIIEncoding.ASCII.GetBytes(string.Format("{0}:{1}", userName, password))));
+                getRequest.Headers.Add("Authorization", "Basic " + Convert.ToBase64String(Encoding.ASCII.GetBytes(string.Format("{0}:{1}", userName, password))));
             }
 
             LogVerbose("HTTP GET {0}", url);
@@ -1590,7 +1613,7 @@ namespace NugetForUnity
             }
             catch (Exception e)
             {
-                Debug.LogErrorFormat("{0}", e.ToString());
+                Debug.LogErrorFormat("{0}", e);
             }
             finally
             {
@@ -1642,7 +1665,7 @@ namespace NugetForUnity
         internal static bool IsInstalled(NugetPackageIdentifier package)
         {
             bool isInstalled = false;
-            NugetPackage installedPackage = null;
+            NugetPackage installedPackage;
 
             if (installedPackages.TryGetValue(package.Id, out installedPackage))
             {
@@ -1670,7 +1693,9 @@ namespace NugetForUnity
                 fromCache = true;
             }
 
-            WWW request = new WWW(url);
+#pragma warning disable 618
+            var request = new WWW(url);
+#pragma warning restore 618
             while (!request.isDone)
             {
                 if (stopwatch.ElapsedMilliseconds >= 750)
@@ -1747,11 +1772,13 @@ namespace NugetForUnity
         /// Data class returned from nuget credential providers in a JSON format. As described here:
         /// https://docs.microsoft.com/en-us/nuget/reference/extensibility/nuget-exe-credential-providers#creating-a-nugetexe-credential-provider
         /// </summary>
-        [System.Serializable]
+        [Serializable]
         private struct CredentialProviderResponse
         {
+#pragma warning disable 0649
             public string Username;
             public string Password;
+#pragma warning restore 0649
         }
 
         /// <summary>
@@ -1890,7 +1917,7 @@ namespace NugetForUnity
             if (!string.IsNullOrEmpty(environmentCredentialProviderPaths))
             {
                 possibleCredentialProviderPaths.AddRange(
-                    environmentCredentialProviderPaths.Split(new string[] { ";" }, StringSplitOptions.RemoveEmptyEntries) ?? Enumerable.Empty<string>());
+                    environmentCredentialProviderPaths.Split(new[] { ";" }, StringSplitOptions.RemoveEmptyEntries));
             }
 
             // Try to find any nuget.exe in the package tools installation location
@@ -1916,7 +1943,7 @@ namespace NugetForUnity
                 process.StartInfo.RedirectStandardOutput = true;
                 process.StartInfo.RedirectStandardError = true;
                 process.StartInfo.FileName = providerPath;
-                process.StartInfo.Arguments = string.Format("-uri \"{0}\"", feedUri.ToString());
+                process.StartInfo.Arguments = string.Format("-uri \"{0}\"", feedUri);
 
                 // http://stackoverflow.com/questions/16803748/how-to-decode-cmd-output-correctly
                 // Default = 65533, ASCII = ?, Unicode = nothing works at all, UTF-8 = 65533, UTF-7 = 242 = WORKS!, UTF-32 = nothing works at all

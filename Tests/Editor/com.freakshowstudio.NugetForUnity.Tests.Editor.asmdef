@@ -1,7 +1,9 @@
 {
-    "name": "NuGet_Editor",
-    "rootNamespace": "NugetForUnity",
-    "references": [],
+    "name": "com.freakshowstudio.NugetForUnity.Tests.Editor",
+    "rootNamespace": "FreakshowStudio.NugetForUnity",
+    "references": [
+        "GUID:cb746a141b2346608cf29834c9094893"
+    ],
     "includePlatforms": [
         "Editor"
     ],

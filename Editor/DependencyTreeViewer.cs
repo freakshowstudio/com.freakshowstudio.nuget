@@ -1,10 +1,13 @@
-﻿namespace NugetForUnity
-{
-    using System.Collections.Generic;
-    using System.Linq;
-    using UnityEditor;
-    using UnityEngine;
+﻿using System.Collections.Generic;
+using System.Linq;
 
+using UnityEditor;
+
+using UnityEngine;
+
+
+namespace FreakshowStudio.NugetForUnity.Editor
+{
     /// <summary>
     /// A viewer for all of the packages and their dependencies currently installed in the project.
     /// </summary>
@@ -91,7 +94,7 @@
             }
             catch (System.Exception e)
             {
-                Debug.LogErrorFormat("{0}", e.ToString());
+                Debug.LogErrorFormat("{0}", e);
             }
             finally
             {
