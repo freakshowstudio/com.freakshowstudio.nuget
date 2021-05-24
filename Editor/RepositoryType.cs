@@ -4,6 +4,6 @@
     {
         NotSpecified = 0,
         Git,
-        TfsGit
+        TfsGit,
     }
 }

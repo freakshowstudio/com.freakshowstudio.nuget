@@ -31,7 +31,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
     [InitializeOnLoad]
     public static class NugetHelper
     {
-        private static bool insideInitializeOnLoad;
+        private static readonly bool InsideInitializeOnLoad;
 
         /// <summary>
         /// The path to the nuget.config file.
@@ -66,33 +66,23 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// <summary>
         /// Gets the loaded packages.config file that hold the dependencies for the project.
         /// </summary>
-        public static PackagesConfigFile PackagesConfigFile
-        {
-            get
-            {
-                if (_packagesConfigFile == null)
-                {
-                    _packagesConfigFile = PackagesConfigFile.Load(PackagesConfigFilePath);
-                }
-
-                return _packagesConfigFile;
-            }
-        }
+        public static PackagesConfigFile PackagesConfigFile =>
+            _packagesConfigFile ??= PackagesConfigFile.Load(PackagesConfigFilePath);
 
         /// <summary>
         /// The list of <see cref="NugetPackageSource"/>s to use.
         /// </summary>
-        private static List<NugetPackageSource> packageSources = new List<NugetPackageSource>();
+        private static readonly List<NugetPackageSource> PackageSources = new();
 
         /// <summary>
         /// The dictionary of currently installed <see cref="NugetPackage"/>s keyed off of their ID string.
         /// </summary>
-        private static Dictionary<string, NugetPackage> installedPackages = new Dictionary<string, NugetPackage>();
+        private static readonly Dictionary<string, NugetPackage> InstalledNugetPackages = new();
 
         /// <summary>
         /// The dictionary of cached credentials retrieved by credential providers, keyed by feed URI.
         /// </summary>
-        private static Dictionary<Uri, CredentialProviderResponse?> cachedCredentialsByFeedUri = new Dictionary<Uri, CredentialProviderResponse?>();
+        private static readonly Dictionary<Uri, CredentialProviderResponse?> CachedCredentialsByFeedUri = new();
 
         /// <summary>
         /// The current .NET version being used (2.0 [actually 3.5], 4.6, etc).
@@ -114,7 +104,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// </summary>
         static NugetHelper()
         {
-            insideInitializeOnLoad = true;
+            InsideInitializeOnLoad = true;
             try
             {
                 // if we are entering playmode, don't do anything
@@ -137,7 +127,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
             }
             finally
             {
-                insideInitializeOnLoad = false;
+                InsideInitializeOnLoad = false;
             }
         }
 
@@ -160,7 +150,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
 
             // parse any command line arguments
             //LogVerbose("Command line: {0}", Environment.CommandLine);
-            packageSources.Clear();
+            PackageSources.Clear();
             bool readingSources = false;
             bool useCommandLineSources = false;
             foreach (string arg in Environment.GetCommandLineArgs())
@@ -173,9 +163,9 @@ namespace FreakshowStudio.NugetForUnity.Editor
                     }
                     else
                     {
-                        NugetPackageSource source = new NugetPackageSource("CMD_LINE_SRC_" + packageSources.Count, arg);
-                        LogVerbose("Adding command line package source {0} at {1}", "CMD_LINE_SRC_" + packageSources.Count, arg);
-                        packageSources.Add(source);
+                        NugetPackageSource source = new NugetPackageSource("CMD_LINE_SRC_" + PackageSources.Count, arg);
+                        LogVerbose("Adding command line package source {0} at {1}", "CMD_LINE_SRC_" + PackageSources.Count, arg);
+                        PackageSources.Add(source);
                     }
                 }
 
@@ -193,11 +183,11 @@ namespace FreakshowStudio.NugetForUnity.Editor
             {
                 if (NugetConfigFile.ActivePackageSource.ExpandedPath == "(Aggregate source)")
                 {
-                    packageSources.AddRange(NugetConfigFile.PackageSources);
+                    PackageSources.AddRange(NugetConfigFile.PackageSources);
                 }
                 else
                 {
-                    packageSources.Add(NugetConfigFile.ActivePackageSource);
+                    PackageSources.Add(NugetConfigFile.ActivePackageSource);
                 }
             }
         }
@@ -206,9 +196,9 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// Runs nuget.exe using the given arguments.
         /// </summary>
         /// <param name="arguments">The arguments to run nuget.exe with.</param>
-        /// <param name="logOuput">True to output debug information to the Unity console.  Defaults to true.</param>
+        /// <param name="logOutput">True to output debug information to the Unity console.  Defaults to true.</param>
         /// <returns>The string of text that was output from nuget.exe following its execution.</returns>
-        private static void RunNugetProcess(string arguments, bool logOuput = true)
+        private static void RunNugetProcess(string arguments, bool logOutput = true)
         {
             // Try to find any nuget.exe in the package tools installation location
             string toolsPackagesFolder = Path.Combine(Application.dataPath, "../Packages");
@@ -223,7 +213,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
             }
             else if (files.Length < 1)
             {
-                Debug.LogWarningFormat("No nuget.exe found! Attemping to install the NuGet.CommandLine package.");
+                Debug.LogWarningFormat("No nuget.exe found! Attempting to install the NuGet.CommandLine package.");
                 InstallIdentifier(new NugetPackageIdentifier("NuGet.CommandLine", "2.8.6"));
                 files = Directory.GetFiles(toolsPackagesFolder, "nuget.exe", SearchOption.AllDirectories);
                 if (files.Length < 1)
@@ -279,7 +269,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
             if (process != null)
             {
                 string output = process.StandardOutput.ReadToEnd();
-                if (logOuput && !string.IsNullOrEmpty(output))
+                if (logOutput && !string.IsNullOrEmpty(output))
                 {
                     Debug.Log(output);
                 }
@@ -324,8 +314,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
         public static void DisableWSAPExportSetting(string filePath, bool notifyOfUpdate)
         {
             string[] unityVersionParts = Application.unityVersion.Split('.');
-            int unityMajorVersion;
-            if (int.TryParse(unityVersionParts[0], out unityMajorVersion) && unityMajorVersion <= 2017)
+            if (int.TryParse(unityVersionParts[0], out var unityMajorVersion) && unityMajorVersion <= 2017)
             {
                 return;
             }
@@ -337,9 +326,9 @@ namespace FreakshowStudio.NugetForUnity.Editor
 
             if (importer == null)
             {
-                if (!insideInitializeOnLoad)
+                if (!InsideInitializeOnLoad)
                 {
-                    Debug.LogError(string.Format("Couldn't get importer for '{0}'.", filePath));
+                    Debug.LogError($"Couldn't get importer for '{filePath}'.");
                 }
                 return;
             }
@@ -348,7 +337,8 @@ namespace FreakshowStudio.NugetForUnity.Editor
             {
                 if (notifyOfUpdate)
                 {
-                    Debug.LogWarning(string.Format("Disabling WSA platform on asset settings for {0}", filePath));
+                    Debug.LogWarning(
+                        $"Disabling WSA platform on asset settings for {filePath}");
                 }
                 else
                 {
@@ -371,7 +361,8 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// <param name="package">The NugetPackage to clean.</param>
         private static void Clean(NugetPackageIdentifier package)
         {
-            string packageInstallDirectory = Path.Combine(NugetConfigFile.RepositoryPath, string.Format("{0}.{1}", package.Id, package.Version));
+            string packageInstallDirectory = Path.Combine(NugetConfigFile.RepositoryPath,
+                $"{package.Id}.{package.Version}");
 
             LogVerbose("Cleaning {0}", packageInstallDirectory);
 
@@ -448,7 +439,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
                     LogVerbose("Using {0}", directory);
                 }
 
-                // delete all of the libaries except for the selected one
+                // delete all of the libraries except for the selected one
                 foreach (DirectoryInfo directory in directoryInfos)
                 {
                     bool validDirectory = selectedDirectories
@@ -776,13 +767,14 @@ namespace FreakshowStudio.NugetForUnity.Editor
             // Use -NoDefaultExcludes to allow files and folders that start with a . to be packed into the package
             // This is done because if you want a file/folder in a Unity project, but you want Unity to ignore it, it must start with a .
             // This is especially useful for .cs and .js files that you don't want Unity to compile as game scripts
-            string arguments = string.Format("pack \"{0}\" -OutputDirectory \"{1}\" -NoDefaultExcludes", nuspecFilePath, PackOutputDirectory);
+            string arguments =
+                $"pack \"{nuspecFilePath}\" -OutputDirectory \"{PackOutputDirectory}\" -NoDefaultExcludes";
 
             RunNugetProcess(arguments);
         }
 
         /// <summary>
-        /// Calls "nuget.exe push" to push a .nupkf file to the the server location defined in the NuGet.config file.
+        /// Calls "nuget.exe push" to push a .nupkg file to the the server location defined in the NuGet.config file.
         /// Note: This differs slightly from NuGet's Push command by automatically calling Pack if the .nupkg doesn't already exist.
         /// </summary>
         /// <param name="nuspec">The NuspecFile which defines the package to push.  Only the ID and Version are used.</param>
@@ -790,7 +782,8 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// /// <param name="apiKey">The API key to use when pushing a package to the server.  This is optional.</param>
         public static void Push(NuspecFile nuspec, string nuspecFilePath, string apiKey = "")
         {
-            string packagePath = Path.Combine(PackOutputDirectory, string.Format("{0}.{1}.nupkg", nuspec.Id, nuspec.Version));
+            string packagePath = Path.Combine(PackOutputDirectory,
+                $"{nuspec.Id}.{nuspec.Version}.nupkg");
             if (!File.Exists(packagePath))
             {
                 LogVerbose("Attempting to Pack.");
@@ -803,7 +796,8 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 }
             }
 
-            string arguments = string.Format("push \"{0}\" {1} -configfile \"{2}\"", packagePath, apiKey, NugetConfigFilePath);
+            string arguments =
+                $"push \"{packagePath}\" {apiKey} -configfile \"{NugetConfigFilePath}\"";
 
             RunNugetProcess(arguments);
         }
@@ -851,8 +845,8 @@ namespace FreakshowStudio.NugetForUnity.Editor
             DirectoryInfo[] dirs = dir.GetDirectories();
             foreach (DirectoryInfo subdir in dirs)
             {
-                string temppath = Path.Combine(destDirectoryPath, subdir.Name);
-                DirectoryCopy(subdir.FullName, temppath);
+                string tempPath = Path.Combine(destDirectoryPath, subdir.Name);
+                DirectoryCopy(subdir.FullName, tempPath);
             }
         }
 
@@ -922,7 +916,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// </summary>
         internal static void UninstallAll()
         {
-            foreach (NugetPackage package in installedPackages.Values.ToList())
+            foreach (NugetPackage package in InstalledNugetPackages.Values.ToList())
             {
                 Uninstall(package);
             }
@@ -932,7 +926,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// "Uninstalls" the given package by simply deleting its folder.
         /// </summary>
         /// <param name="package">The NugetPackage to uninstall.</param>
-        /// <param name="refreshAssets">True to force Unity to refesh its Assets folder.  False to temporarily ignore the change.  Defaults to true.</param>
+        /// <param name="refreshAssets">True to force Unity to refresh its Assets folder.  False to temporarily ignore the change.  Defaults to true.</param>
         public static void Uninstall(NugetPackageIdentifier package, bool refreshAssets = true)
         {
             LogVerbose("Uninstalling: {0} {1}", package.Id, package.Version);
@@ -941,16 +935,19 @@ namespace FreakshowStudio.NugetForUnity.Editor
             PackagesConfigFile.RemovePackage(package);
             PackagesConfigFile.Save(PackagesConfigFilePath);
 
-            string packageInstallDirectory = Path.Combine(NugetConfigFile.RepositoryPath, string.Format("{0}.{1}", package.Id, package.Version));
+            string packageInstallDirectory = Path.Combine(NugetConfigFile.RepositoryPath,
+                $"{package.Id}.{package.Version}");
             DeleteDirectory(packageInstallDirectory);
 
-            string metaFile = Path.Combine(NugetConfigFile.RepositoryPath, string.Format("{0}.{1}.meta", package.Id, package.Version));
+            string metaFile = Path.Combine(NugetConfigFile.RepositoryPath,
+                $"{package.Id}.{package.Version}.meta");
             DeleteFile(metaFile);
 
-            string toolsInstallDirectory = Path.Combine(Application.dataPath, string.Format("../Packages/{0}.{1}", package.Id, package.Version));
+            string toolsInstallDirectory = Path.Combine(Application.dataPath,
+                $"../Packages/{package.Id}.{package.Version}");
             DeleteDirectory(toolsInstallDirectory);
 
-            installedPackages.Remove(package.Id);
+            InstalledNugetPackages.Remove(package.Id);
 
             if (refreshAssets)
             {
@@ -985,7 +982,8 @@ namespace FreakshowStudio.NugetForUnity.Editor
 
             foreach (NugetPackage update in packages)
             {
-                EditorUtility.DisplayProgressBar(string.Format("Updating to {0} {1}", update.Id, update.Version), "Installing All Updates", currentProgress);
+                EditorUtility.DisplayProgressBar(
+                    $"Updating to {update.Id} {update.Version}", "Installing All Updates", currentProgress);
 
                 NugetPackage installedPackage = toUpdate.FirstOrDefault(p => p.Id == update.Id);
                 if (installedPackage != null)
@@ -1009,7 +1007,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// Gets the dictionary of packages that are actually installed in the project, keyed off of the ID.
         /// </summary>
         /// <returns>A dictionary of installed <see cref="NugetPackage"/>s.</returns>
-        public static IEnumerable<NugetPackage> InstalledPackages { get { return installedPackages.Values; } }
+        public static IEnumerable<NugetPackage> InstalledPackages => InstalledNugetPackages.Values;
 
         /// <summary>
         /// Updates the dictionary of packages that are actually installed in the project based on the files that are currently installed.
@@ -1021,7 +1019,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
 
-            installedPackages.Clear();
+            InstalledNugetPackages.Clear();
 
             // loops through the packages that are actually installed in the project
             if (Directory.Exists(NugetConfigFile.RepositoryPath))
@@ -1031,9 +1029,9 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 foreach (string nupkgFile in nupkgFiles)
                 {
                     NugetPackage package = NugetPackage.FromNupkgFile(nupkgFile);
-                    if (!installedPackages.ContainsKey(package.Id))
+                    if (!InstalledNugetPackages.ContainsKey(package.Id))
                     {
-                        installedPackages.Add(package.Id, package);
+                        InstalledNugetPackages.Add(package.Id, package);
                     }
                     else
                     {
@@ -1046,9 +1044,9 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 foreach (string nuspecFile in nuspecFiles)
                 {
                     NugetPackage package = NugetPackage.FromNuspec(NuspecFile.Load(nuspecFile));
-                    if (!installedPackages.ContainsKey(package.Id))
+                    if (!InstalledNugetPackages.ContainsKey(package.Id))
                     {
-                        installedPackages.Add(package.Id, package);
+                        InstalledNugetPackages.Add(package.Id, package);
                     }
                     else
                     {
@@ -1078,7 +1076,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
             List<NugetPackage> packages = new List<NugetPackage>();
 
             // Loop through all active sources and combine them into a single list
-            foreach (NugetPackageSource source in packageSources.Where(s => s.IsEnabled))
+            foreach (NugetPackageSource source in PackageSources.Where(s => s.IsEnabled))
             {
                 List<NugetPackage> newPackages = source.Search(searchTerm, includeAllVersions, includePrerelease, numberToGet, numberToSkip);
                 packages.AddRange(newPackages);
@@ -1095,17 +1093,17 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// <param name="includePrerelease">True to include prerelease packages (alpha, beta, etc).</param>
         /// <param name="includeAllVersions">True to include older versions that are not the latest version.</param>
         /// <param name="targetFrameworks">The specific frameworks to target?</param>
-        /// <param name="versionContraints">The version constraints?</param>
+        /// <param name="versionConstraints">The version constraints?</param>
         /// <returns>A list of all updates available.</returns>
-        public static List<NugetPackage> GetUpdates(IEnumerable<NugetPackage> packagesToUpdate, bool includePrerelease = false, bool includeAllVersions = false, string targetFrameworks = "", string versionContraints = "")
+        public static List<NugetPackage> GetUpdates(IEnumerable<NugetPackage> packagesToUpdate, bool includePrerelease = false, bool includeAllVersions = false, string targetFrameworks = "", string versionConstraints = "")
         {
             List<NugetPackage> packages = new List<NugetPackage>();
             var nugetPackages = packagesToUpdate as NugetPackage[] ?? packagesToUpdate.ToArray();
 
             // Loop through all active sources and combine them into a single list
-            foreach (NugetPackageSource source in packageSources.Where(s => s.IsEnabled))
+            foreach (NugetPackageSource source in PackageSources.Where(s => s.IsEnabled))
             {
-                List<NugetPackage> newPackages = source.GetUpdates(nugetPackages, includePrerelease, includeAllVersions, targetFrameworks, versionContraints);
+                List<NugetPackage> newPackages = source.GetUpdates(nugetPackages, includePrerelease, includeAllVersions, targetFrameworks, versionConstraints);
                 packages.AddRange(newPackages);
                 packages = packages.Distinct().ToList();
             }
@@ -1145,9 +1143,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// <returns>The best <see cref="NugetPackage"/> match, if there is one, otherwise null.</returns>
         private static NugetPackage GetInstalledPackage(NugetPackageIdentifier packageId)
         {
-            NugetPackage installedPackage;
-
-            if (installedPackages.TryGetValue(packageId.Id, out installedPackage))
+            if (InstalledNugetPackages.TryGetValue(packageId.Id, out var installedPackage))
             {
                 if (packageId.Version != installedPackage.Version)
                 {
@@ -1182,7 +1178,8 @@ namespace FreakshowStudio.NugetForUnity.Editor
 
             if (NugetHelper.NugetConfigFile.InstallFromCache)
             {
-                string cachedPackagePath = Path.Combine(PackOutputDirectory, string.Format("./{0}.{1}.nupkg", packageId.Id, packageId.Version));
+                string cachedPackagePath = Path.Combine(PackOutputDirectory,
+                    $"./{packageId.Id}.{packageId.Version}.nupkg");
 
                 if (File.Exists(cachedPackagePath))
                 {
@@ -1204,7 +1201,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
             NugetPackage package = null;
 
             // Loop through all active sources and stop once the package is found
-            foreach (NugetPackageSource source in packageSources.Where(s => s.IsEnabled))
+            foreach (NugetPackageSource source in PackageSources.Where(s => s.IsEnabled))
             {
                 NugetPackage foundPackage = source.GetSpecificPackage(packageId);
                 if (foundPackage == null)
@@ -1257,9 +1254,9 @@ namespace FreakshowStudio.NugetForUnity.Editor
         }
 
         /// <summary>
-        /// Installs the package given by the identifer.  It fetches the appropriate full package from the installed packages, package cache, or package sources and installs it.
+        /// Installs the package given by the identifier.  It fetches the appropriate full package from the installed packages, package cache, or package sources and installs it.
         /// </summary>
-        /// <param name="package">The identifer of the package to install.</param>
+        /// <param name="package">The identifier of the package to install.</param>
         /// <param name="refreshAssets">True to refresh the Unity asset database.  False to ignore the changes (temporarily).</param>
         internal static bool InstallIdentifier(NugetPackageIdentifier package, bool refreshAssets = true)
         {
@@ -1280,7 +1277,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// Outputs the given message to the log only if verbose mode is active.  Otherwise it does nothing.
         /// </summary>
         /// <param name="format">The formatted message string.</param>
-        /// <param name="args">The arguments for the formattted message string.</param>
+        /// <param name="args">The arguments for the formatted message string.</param>
         public static void LogVerbose(string format, params object[] args)
         {
             if (NugetConfigFile == null || NugetConfigFile.Verbose)
@@ -1315,8 +1312,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 return true;
             }
 
-            NugetPackage installedPackage;
-            if (installedPackages.TryGetValue(package.Id, out installedPackage))
+            if (InstalledNugetPackages.TryGetValue(package.Id, out var installedPackage))
             {
                 if (installedPackage < package)
                 {
@@ -1344,7 +1340,8 @@ namespace FreakshowStudio.NugetForUnity.Editor
 
                 if (refreshAssets)
                 {
-                    EditorUtility.DisplayProgressBar(string.Format("Installing {0} {1}", package.Id, package.Version), "Installing Dependencies", 0.1f);
+                    EditorUtility.DisplayProgressBar(
+                        $"Installing {package.Id} {package.Version}", "Installing Dependencies", 0.1f);
                 }
 
                 // install all dependencies for target framework
@@ -1357,7 +1354,8 @@ namespace FreakshowStudio.NugetForUnity.Editor
                     bool installed = InstallIdentifier(dependency);
                     if (!installed)
                     {
-                        throw new Exception(string.Format("Failed to install dependency: {0} {1}.", dependency.Id, dependency.Version));
+                        throw new Exception(
+                            $"Failed to install dependency: {dependency.Id} {dependency.Version}.");
                     }
                 }
 
@@ -1365,7 +1363,8 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 PackagesConfigFile.AddPackage(package);
                 PackagesConfigFile.Save(PackagesConfigFilePath);
 
-                string cachedPackagePath = Path.Combine(PackOutputDirectory, string.Format("./{0}.{1}.nupkg", package.Id, package.Version));
+                string cachedPackagePath = Path.Combine(PackOutputDirectory,
+                    $"./{package.Id}.{package.Version}.nupkg");
                 if (NugetConfigFile.InstallFromCache && File.Exists(cachedPackagePath))
                 {
                     LogVerbose("Cached package found for {0} {1}", package.Id, package.Version);
@@ -1377,7 +1376,8 @@ namespace FreakshowStudio.NugetForUnity.Editor
                         LogVerbose("Caching local package {0} {1}", package.Id, package.Version);
 
                         // copy the .nupkg from the local path to the cache
-                        File.Copy(Path.Combine(package.PackageSource.ExpandedPath, string.Format("./{0}.{1}.nupkg", package.Id, package.Version)), cachedPackagePath, true);
+                        File.Copy(Path.Combine(package.PackageSource.ExpandedPath,
+                            $"./{package.Id}.{package.Version}.nupkg"), cachedPackagePath, true);
                     }
                     else
                     {
@@ -1397,25 +1397,26 @@ namespace FreakshowStudio.NugetForUnity.Editor
 
                         if (refreshAssets)
                         {
-                            EditorUtility.DisplayProgressBar(string.Format("Installing {0} {1}", package.Id, package.Version), "Downloading Package", 0.3f);
+                            EditorUtility.DisplayProgressBar(
+                                $"Installing {package.Id} {package.Version}", "Downloading Package", 0.3f);
                         }
 
                         Stream objStream = RequestUrl(package.DownloadUrl, package.PackageSource.UserName, package.PackageSource.ExpandedPassword, timeOut: null);
-                        using (Stream file = File.Create(cachedPackagePath))
-                        {
-                            CopyStream(objStream, file);
-                        }
+                        using Stream file = File.Create(cachedPackagePath);
+                        CopyStream(objStream, file);
                     }
                 }
 
                 if (refreshAssets)
                 {
-                    EditorUtility.DisplayProgressBar(string.Format("Installing {0} {1}", package.Id, package.Version), "Extracting Package", 0.6f);
+                    EditorUtility.DisplayProgressBar(
+                        $"Installing {package.Id} {package.Version}", "Extracting Package", 0.6f);
                 }
 
                 if (File.Exists(cachedPackagePath))
                 {
-                    string baseDirectory = Path.Combine(NugetConfigFile.RepositoryPath, string.Format("{0}.{1}", package.Id, package.Version));
+                    string baseDirectory = Path.Combine(NugetConfigFile.RepositoryPath,
+                        $"{package.Id}.{package.Version}");
 
                     // unzip the package
                     using (ZipArchive zip = ZipFile.OpenRead(cachedPackagePath))
@@ -1443,7 +1444,8 @@ namespace FreakshowStudio.NugetForUnity.Editor
                     }
 
                     // copy the .nupkg inside the Unity project
-                    File.Copy(cachedPackagePath, Path.Combine(baseDirectory, string.Format("{0}.{1}.nupkg", package.Id, package.Version)), true);
+                    File.Copy(cachedPackagePath, Path.Combine(baseDirectory,
+                        $"{package.Id}.{package.Version}.nupkg"), true);
                 }
                 else
                 {
@@ -1452,14 +1454,15 @@ namespace FreakshowStudio.NugetForUnity.Editor
 
                 if (refreshAssets)
                 {
-                    EditorUtility.DisplayProgressBar(string.Format("Installing {0} {1}", package.Id, package.Version), "Cleaning Package", 0.9f);
+                    EditorUtility.DisplayProgressBar(
+                        $"Installing {package.Id} {package.Version}", "Cleaning Package", 0.9f);
                 }
 
                 // clean
                 Clean(package);
 
                 // update the installed packages list
-                installedPackages.Add(package.Id, package);
+                InstalledNugetPackages.Add(package.Id, package);
                 installSuccess = true;
             }
             catch (Exception e)
@@ -1472,7 +1475,8 @@ namespace FreakshowStudio.NugetForUnity.Editor
             {
                 if (refreshAssets)
                 {
-                    EditorUtility.DisplayProgressBar(string.Format("Installing {0} {1}", package.Id, package.Version), "Importing Package", 0.95f);
+                    EditorUtility.DisplayProgressBar(
+                        $"Installing {package.Id} {package.Version}", "Importing Package", 0.95f);
                     AssetDatabase.Refresh();
                     EditorUtility.ClearProgressBar();
                 }
@@ -1515,14 +1519,14 @@ namespace FreakshowStudio.NugetForUnity.Editor
         }
 
         // TODO: Move to ScriptableObjet
-        private static List<AuthenticatedFeed> knownAuthenticatedFeeds = new List<AuthenticatedFeed>()
+        private static readonly List<AuthenticatedFeed> KnownAuthenticatedFeeds = new()
         {
-            new AuthenticatedFeed()
+            new AuthenticatedFeed
             {
                 AccountUrlPattern = @"^https:\/\/(?<account>[a-zA-z0-9]+).pkgs.visualstudio.com",
                 ProviderUrlTemplate = "https://{account}.pkgs.visualstudio.com/_apis/public/nuget/client/CredentialProviderBundle.zip"
             },
-            new AuthenticatedFeed()
+            new AuthenticatedFeed
             {
                 AccountUrlPattern = @"^https:\/\/pkgs.dev.azure.com\/(?<account>[a-zA-z0-9]+)\/",
                 ProviderUrlTemplate = "https://pkgs.dev.azure.com/{account}/_apis/public/nuget/client/CredentialProviderBundle.zip"
@@ -1561,7 +1565,8 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 // Send password as described by https://docs.microsoft.com/en-us/vsts/integrate/get-started/rest/basics.
                 // This works with Visual Studio Team Services, but hasn't been tested with other authentication schemes so there may be additional work needed if there
                 // are different kinds of authentication.
-                getRequest.Headers.Add("Authorization", "Basic " + Convert.ToBase64String(Encoding.ASCII.GetBytes(string.Format("{0}:{1}", userName, password))));
+                getRequest.Headers.Add("Authorization", "Basic " + Convert.ToBase64String(Encoding.ASCII.GetBytes(
+                    $"{userName}:{password}")));
             }
 
             LogVerbose("HTTP GET {0}", url);
@@ -1593,7 +1598,8 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 {
                     if (package != null)
                     {
-                        EditorUtility.DisplayProgressBar("Restoring NuGet Packages", string.Format("Restoring {0} {1}", package.Id, package.Version), currentProgress);
+                        EditorUtility.DisplayProgressBar("Restoring NuGet Packages",
+                            $"Restoring {package.Id} {package.Version}", currentProgress);
 
                         if (!IsInstalled(package))
                         {
@@ -1639,7 +1645,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 bool installed = false;
                 foreach (NugetPackageIdentifier package in PackagesConfigFile.Packages)
                 {
-                    string packageName = string.Format("{0}.{1}", package.Id, package.Version);
+                    string packageName = $"{package.Id}.{package.Version}";
                     if (name == packageName)
                     {
                         installed = true;
@@ -1665,9 +1671,8 @@ namespace FreakshowStudio.NugetForUnity.Editor
         internal static bool IsInstalled(NugetPackageIdentifier package)
         {
             bool isInstalled = false;
-            NugetPackage installedPackage;
 
-            if (installedPackages.TryGetValue(package.Id, out installedPackage))
+            if (InstalledNugetPackages.TryGetValue(package.Id, out var installedPackage))
             {
                 isInstalled = package.Version == installedPackage.Version;
             }
@@ -1682,7 +1687,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// <returns>The image as a Unity Texture2D object.</returns>
         public static Texture2D DownloadImage(string url)
         {
-            bool timedout = false;
+            bool timedOut = false;
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
 
@@ -1701,14 +1706,14 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 if (stopwatch.ElapsedMilliseconds >= 750)
                 {
                     request.Dispose();
-                    timedout = true;
+                    timedOut = true;
                     break;
                 }
             }
 
             Texture2D result = null;
 
-            if (timedout)
+            if (timedOut)
             {
                 LogVerbose("Downloading image {0} timed out! Took more than 750ms.", url);
             }
@@ -1794,7 +1799,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
 
         private static void DownloadCredentialProviders(Uri feedUri)
         {
-            foreach (AuthenticatedFeed feed in NugetHelper.knownAuthenticatedFeeds)
+            foreach (AuthenticatedFeed feed in NugetHelper.KnownAuthenticatedFeeds)
             {
                 string account = feed.GetAccount(feedUri.ToString());
                 if (string.IsNullOrEmpty(account)) { continue; }
@@ -1850,21 +1855,23 @@ namespace FreakshowStudio.NugetForUnity.Editor
         }
 
         /// <summary>
-        /// Helper function to aquire a token to access VSTS hosted nuget feeds by using the CredentialProvider.VSS.exe
+        /// Helper function to acquire a token to access VSTS hosted nuget feeds by using the CredentialProvider.VSS.exe
         /// tool. Downloading it from the VSTS instance if needed.
         /// See here for more info on nuget Credential Providers:
         /// https://docs.microsoft.com/en-us/nuget/reference/extensibility/nuget-exe-credential-providers
         /// </summary>
         /// <param name="feedUri">The hostname where the VSTS instance is hosted (such as microsoft.pkgs.visualsudio.com.</param>
-        /// <returns>The password in the form of a token, or null if the password could not be aquired</returns>
+        /// <returns>The password in the form of a token, or null if the password could not be acquired</returns>
         private static CredentialProviderResponse? GetCredentialFromProvider(Uri feedUri)
         {
-            CredentialProviderResponse? response;
-            if (!cachedCredentialsByFeedUri.TryGetValue(feedUri, out response))
+            if (CachedCredentialsByFeedUri.TryGetValue(feedUri,
+                out var response))
             {
-                response = GetCredentialFromProvider_Uncached(feedUri, true);
-                cachedCredentialsByFeedUri[feedUri] = response;
+                return response;
             }
+
+            response = GetCredentialFromProvider_Uncached(feedUri, true);
+            CachedCredentialsByFeedUri[feedUri] = response;
             return response;
         }
 
@@ -1895,7 +1902,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// </summary>
         public static void ClearCachedCredentials()
         {
-            cachedCredentialsByFeedUri.Clear();
+            CachedCredentialsByFeedUri.Clear();
         }
 
         /// <summary>
@@ -1907,7 +1914,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
             LogVerbose("Getting credential for {0}", feedUri);
 
             // Build the list of possible locations to find the credential provider. In order it should be local app data, paths set on the
-            // environment varaible, and lastly look at the root of the pacakges save location.
+            // environment variable, and lastly look at the root of the packages save location.
             List<string> possibleCredentialProviderPaths = new List<string>
             {
                 Path.Combine(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Nuget"), "CredentialProviders")
@@ -1937,17 +1944,22 @@ namespace FreakshowStudio.NugetForUnity.Editor
             foreach (string providerPath in providerPaths.Distinct())
             {
                 // Launch the credential provider executable and get the json encoded response from the std output
-                Process process = new Process();
-                process.StartInfo.UseShellExecute = false;
-                process.StartInfo.CreateNoWindow = true;
-                process.StartInfo.RedirectStandardOutput = true;
-                process.StartInfo.RedirectStandardError = true;
-                process.StartInfo.FileName = providerPath;
-                process.StartInfo.Arguments = string.Format("-uri \"{0}\"", feedUri);
+                Process process = new Process
+                {
+                    StartInfo =
+                    {
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        FileName = providerPath,
+                        Arguments = $"-uri \"{feedUri}\"",
+                        StandardOutputEncoding = Encoding.GetEncoding(850),
+                    }
+                };
 
                 // http://stackoverflow.com/questions/16803748/how-to-decode-cmd-output-correctly
                 // Default = 65533, ASCII = ?, Unicode = nothing works at all, UTF-8 = 65533, UTF-7 = 242 = WORKS!, UTF-32 = nothing works at all
-                process.StartInfo.StandardOutputEncoding = Encoding.GetEncoding(850);
                 process.Start();
                 process.WaitForExit();
 

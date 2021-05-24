@@ -227,7 +227,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// <returns>A string in the form "{ID}.{Version}".</returns>
         public override string ToString()
         {
-            return string.Format("{0}.{1}", Id, Version);
+            return $"{Id}.{Version}";
         }
 
         /// <summary>

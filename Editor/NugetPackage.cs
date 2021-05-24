@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 
 namespace FreakshowStudio.NugetForUnity.Editor
@@ -97,6 +98,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// <returns>True if the packages are equal, otherwise false.</returns>
         public bool Equals(NugetPackage other)
         {
+            Debug.Assert(other != null, nameof(other) + " != null");
             return other.Id == Id && other.Version == Version;
         }
 
@@ -169,6 +171,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// <returns>True if the packages are equal, otherwise false.</returns>
         public bool Equals(NugetPackage x, NugetPackage y)
         {
+            if (x == null || y == null) return false;
             return x.Id == y.Id && x.Version == y.Version;
         }
 

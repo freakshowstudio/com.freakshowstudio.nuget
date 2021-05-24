@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Xml.Linq;
 
@@ -49,6 +50,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
             List<NugetPackage> packages = new List<NugetPackage>();
 
             IEnumerable<XElement> packageEntries;
+            Debug.Assert(document.Root != null, "document.Root != null");
             if (document.Root.Name.Equals(XName.Get("entry", AtomNamespace)))
             {
                 packageEntries = Enumerable.Repeat(document.Root, 1);
@@ -62,7 +64,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
             {
                 NugetPackage package = new NugetPackage();
                 package.Id = entry.GetAtomElement("title").Value;
-                package.DownloadUrl = entry.GetAtomElement("content").Attribute("src").Value;
+                package.DownloadUrl = entry.GetAtomElement("content").Attribute("src")?.Value;
 
                 var entryProperties = entry.Element(XName.Get("properties", MetaDataNamespace));
                 package.Title = entryProperties.GetProperty("Title");

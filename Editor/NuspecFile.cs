@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -12,7 +13,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
     /// Represents a .nuspec file used to store metadata for a NuGet package.
     /// </summary>
     /// <remarks>
-    /// At a minumum, Id, Version, Description, and Authors is required.  Everything else is optional.
+    /// At a minimum, Id, Version, Description, and Authors is required.  Everything else is optional.
     /// See more info here: https://docs.microsoft.com/en-us/nuget/schema/nuspec
     /// </remarks>
     public class NuspecFile
@@ -137,16 +138,12 @@ namespace FreakshowStudio.NugetForUnity.Editor
             if (File.Exists(nupkgFilepath))
             {
                 // get the .nuspec file from inside the .nupkg
-                using (ZipArchive zip = ZipFile.OpenRead(nupkgFilepath))
-                {
-                    //var entry = zip[string.Format("{0}.nuspec", packageId)];
-                    var entry = zip.Entries.First(x => x.FullName.EndsWith(".nuspec"));
+                using ZipArchive zip = ZipFile.OpenRead(nupkgFilepath);
+                //var entry = zip[string.Format("{0}.nuspec", packageId)];
+                var entry = zip.Entries.First(x => x.FullName.EndsWith(".nuspec"));
 
-                    using (Stream stream = entry.Open())
-                    {
-                        nuspec = Load(stream);
-                    }
-                }
+                using Stream stream = entry.Open();
+                nuspec = Load(stream);
             }
             else
             {
@@ -154,7 +151,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
 
                 //nuspec.Id = packageId;
                 //nuspec.Version = packageVersion;
-                nuspec.Description = string.Format("COULD NOT LOAD {0}", nupkgFilepath);
+                nuspec.Description = $"COULD NOT LOAD {nupkgFilepath}";
             }
 
             return nuspec;
@@ -191,11 +188,14 @@ namespace FreakshowStudio.NugetForUnity.Editor
         {
             NuspecFile nuspec = new NuspecFile();
 
+            Debug.Assert(nuspecDocument.Root != null, "nuspecDocument.Root != null");
             string nuspecNamespace = nuspecDocument.Root.GetDefaultNamespace().ToString();
 
             XElement package = nuspecDocument.Element(XName.Get("package", nuspecNamespace));
+            Debug.Assert(package != null, nameof(package) + " != null");
             XElement metadata = package.Element(XName.Get("metadata", nuspecNamespace));
 
+            Debug.Assert(metadata != null, nameof(metadata) + " != null");
             nuspec.Id = (string)metadata.Element(XName.Get("id", nuspecNamespace)) ?? string.Empty;
             nuspec.Version = (string)metadata.Element(XName.Get("version", nuspecNamespace)) ?? string.Empty;
             nuspec.Title = (string)metadata.Element(XName.Get("title", nuspecNamespace)) ?? string.Empty;
@@ -232,10 +232,16 @@ namespace FreakshowStudio.NugetForUnity.Editor
 
                     foreach (var dependencyElement in frameworkGroup.Elements(XName.Get("dependency", nuspecNamespace)))
                     {
-                        NugetPackageIdentifier dependency = new NugetPackageIdentifier();
+                        NugetPackageIdentifier dependency =
+                            new NugetPackageIdentifier
+                            {
+                                Id = (string) dependencyElement
+                                    .Attribute("id") ?? string.Empty,
+                                Version =
+                                    (string) dependencyElement.Attribute(
+                                        "version") ?? string.Empty
+                            };
 
-                        dependency.Id = (string)dependencyElement.Attribute("id") ?? string.Empty;
-                        dependency.Version = (string)dependencyElement.Attribute("version") ?? string.Empty;
                         group.Dependencies.Add(dependency);
                     }
 
@@ -248,9 +254,15 @@ namespace FreakshowStudio.NugetForUnity.Editor
                     NugetFrameworkGroup group = new NugetFrameworkGroup();
                     foreach (var dependencyElement in dependenciesElement.Elements(XName.Get("dependency", nuspecNamespace)))
                     {
-                        NugetPackageIdentifier dependency = new NugetPackageIdentifier();
-                        dependency.Id = (string)dependencyElement.Attribute("id") ?? string.Empty;
-                        dependency.Version = (string)dependencyElement.Attribute("version") ?? string.Empty;
+                        NugetPackageIdentifier dependency =
+                            new NugetPackageIdentifier
+                            {
+                                Id = (string) dependencyElement
+                                    .Attribute("id") ?? string.Empty,
+                                Version =
+                                    (string) dependencyElement.Attribute(
+                                        "version") ?? string.Empty
+                            };
                         group.Dependencies.Add(dependency);
                     }
 
@@ -264,9 +276,13 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 //UnityEngine.Debug.Log("Loading files!");
                 foreach (var fileElement in filesElement.Elements(XName.Get("file", nuspecNamespace)))
                 {
-                    NuspecContentFile file = new NuspecContentFile();
-                    file.Source = (string)fileElement.Attribute("src") ?? string.Empty;
-                    file.Target = (string)fileElement.Attribute("target") ?? string.Empty;
+                    NuspecContentFile file = new NuspecContentFile
+                    {
+                        Source = (string) fileElement.Attribute("src") ??
+                                 string.Empty,
+                        Target = (string) fileElement.Attribute("target") ??
+                                 string.Empty
+                    };
                     nuspec.Files.Add(file);
                 }
             }

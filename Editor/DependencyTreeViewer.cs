@@ -37,7 +37,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// <summary>
         /// The list of packages that depend on the specified package.
         /// </summary>
-        private List<NugetPackage> parentPackages = new List<NugetPackage>();
+        private readonly List<NugetPackage> parentPackages = new();
 
         /// <summary>
         /// The list of currently installed packages.
@@ -49,7 +49,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// </summary>
         private string[] installedPackageIds;
 
-        private Dictionary<NugetPackage, bool> expanded = new Dictionary<NugetPackage, bool>();
+        private readonly Dictionary<NugetPackage, bool> expanded = new();
 
         private List<NugetPackage> roots;
 
@@ -191,7 +191,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
             } 
         }
 
-        private void DrawDepencency(NugetPackageIdentifier dependency)
+        private void DrawDependency(NugetPackageIdentifier dependency)
         {
             NugetPackage fullDependency = installedPackages.Find(p => p.Id == dependency.Id);
             if (fullDependency != null)
@@ -206,9 +206,10 @@ namespace FreakshowStudio.NugetForUnity.Editor
 
         private void DrawPackage(NugetPackage package)
         {
-            if (package.Dependencies != null && package.Dependencies.Count > 0)
+            if (package.Dependencies is {Count: > 0})
             {
-                expanded[package] = EditorGUILayout.Foldout(expanded[package], string.Format("{0} {1}", package.Id, package.Version));
+                expanded[package] = EditorGUILayout.Foldout(expanded[package],
+                    $"{package.Id} {package.Version}");
 
                 if (expanded[package])
                 {
@@ -217,14 +218,14 @@ namespace FreakshowStudio.NugetForUnity.Editor
                     NugetFrameworkGroup frameworkGroup = NugetHelper.GetBestDependencyFrameworkGroupForCurrentSettings(package);
                     foreach (NugetPackageIdentifier dependency in frameworkGroup.Dependencies)
                     {
-                        DrawDepencency(dependency);
+                        DrawDependency(dependency);
                     }
                     EditorGUI.indentLevel--;
                 }
             }
             else
             {
-                EditorGUILayout.LabelField(string.Format("{0} {1}", package.Id, package.Version));
+                EditorGUILayout.LabelField($"{package.Id} {package.Version}");
             }
         }
     }

@@ -2,6 +2,8 @@
 
 using UnityEngine;
 
+using Debug = System.Diagnostics.Debug;
+
 
 namespace FreakshowStudio.NugetForUnity.Editor
 {
@@ -30,13 +32,14 @@ namespace FreakshowStudio.NugetForUnity.Editor
         {
             bool preferencesChangedThisFrame = false;
 
-            EditorGUILayout.LabelField(string.Format("Version: {0}", NuGetForUnityVersion));
+            EditorGUILayout.LabelField($"Version: {NuGetForUnityVersion}");
 
             if (NugetHelper.NugetConfigFile == null)
             {
                 NugetHelper.LoadNugetConfigFile();
             }
 
+            Debug.Assert(NugetHelper.NugetConfigFile != null, "NugetHelper.NugetConfigFile != null");
             bool installFromCache = EditorGUILayout.Toggle("Install From the Cache", NugetHelper.NugetConfigFile.InstallFromCache);
             if (installFromCache != NugetHelper.NugetConfigFile.InstallFromCache)
             {

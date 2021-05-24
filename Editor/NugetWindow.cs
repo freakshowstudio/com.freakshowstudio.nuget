@@ -118,7 +118,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// <summary>
         /// Used to keep track of which packages the user has opened the clone window on.
         /// </summary>
-        private HashSet<NugetPackage> openCloneWindows = new HashSet<NugetPackage>();
+        private readonly HashSet<NugetPackage> openCloneWindows = new();
 
         private IEnumerable<NugetPackage> FilteredInstalledPackages
         {
@@ -223,34 +223,33 @@ namespace FreakshowStudio.NugetForUnity.Editor
         {
             const string url = "https://github.com/GlitchEnzo/NuGetForUnity/releases";
 #if UNITY_2017_1_OR_NEWER // UnityWebRequest is not available in Unity 5.2, which is the currently the earliest version supported by NuGetForUnity.
-            using (UnityWebRequest request = UnityWebRequest.Get(url))
-            {
+            using UnityWebRequest request = UnityWebRequest.Get(url);
 #pragma warning disable 618
-                request.Send();
+            request.Send();
 #pragma warning restore 618
 #else
             using (WWW request = new WWW(url))
             {
 #endif
 
-                NugetHelper.LogVerbose("HTTP GET {0}", url);
-                while (!request.isDone)
-                {
-                    EditorUtility.DisplayProgressBar("Checking updates", null, 0.0f);
-                }
-                EditorUtility.ClearProgressBar();
+            NugetHelper.LogVerbose("HTTP GET {0}", url);
+            while (!request.isDone)
+            {
+                EditorUtility.DisplayProgressBar("Checking updates", null, 0.0f);
+            }
+            EditorUtility.ClearProgressBar();
 
-                string latestVersion = null;
-                string latestVersionDownloadUrl = null;
+            string latestVersion = null;
+            string latestVersionDownloadUrl = null;
 
-                string response = null;
+            string response = null;
 #if UNITY_2017_1_OR_NEWER
 #pragma warning disable 618
-                if (!request.isNetworkError && !request.isHttpError)
+            if (!request.isNetworkError && !request.isHttpError)
 #pragma warning restore 618
-                {
-                    response = request.downloadHandler.text;
-                }
+            {
+                response = request.downloadHandler.text;
+            }
 #else
                 if (request.error == null)
                 {
@@ -258,47 +257,46 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 }
 #endif
 
-                if (response != null)
-                {
-                    latestVersion = GetLatestVersonFromReleasesHtml(response, out latestVersionDownloadUrl);
-                }
+            if (response != null)
+            {
+                latestVersion = GetLatestVersionFromReleasesHtml(response, out latestVersionDownloadUrl);
+            }
 
-                if (latestVersion == null)
-                {
-                    EditorUtility.DisplayDialog(
-                            "Unable to Determine Updates",
-                            string.Format("Couldn't find release information at {0}.", url),
-                            "OK");
-                    return;
-                }
+            if (latestVersion == null)
+            {
+                EditorUtility.DisplayDialog(
+                    "Unable to Determine Updates",
+                    $"Couldn't find release information at {url}.",
+                    "OK");
+                return;
+            }
 
-                NugetPackageIdentifier current = new NugetPackageIdentifier("NuGetForUnity", NugetPreferences.NuGetForUnityVersion);
-                NugetPackageIdentifier latest = new NugetPackageIdentifier("NuGetForUnity", latestVersion);
-                if (current >= latest)
-                {
-                    EditorUtility.DisplayDialog(
-                            "No Updates Available",
-                            string.Format("Your version of NuGetForUnity is up to date.\nVersion {0}.", NugetPreferences.NuGetForUnityVersion),
-                            "OK");
-                    return;
-                }
+            NugetPackageIdentifier current = new NugetPackageIdentifier("NuGetForUnity", NugetPreferences.NuGetForUnityVersion);
+            NugetPackageIdentifier latest = new NugetPackageIdentifier("NuGetForUnity", latestVersion);
+            if (current >= latest)
+            {
+                EditorUtility.DisplayDialog(
+                    "No Updates Available",
+                    $"Your version of NuGetForUnity is up to date.\nVersion {NugetPreferences.NuGetForUnityVersion}.",
+                    "OK");
+                return;
+            }
 
-                // New version is available. Give user options for installing it.
-                switch (EditorUtility.DisplayDialogComplex(
-                        "Update Available",
-                        string.Format("Current Version: {0}\nLatest Version: {1}", NugetPreferences.NuGetForUnityVersion, latestVersion),
-                        "Install Latest",
-                        "Open Releases Page",
-                        "Cancel"))
-                {
-                    case 0: Application.OpenURL(latestVersionDownloadUrl); break;
-                    case 1: Application.OpenURL(url); break;
-                    case 2: break;
-                }
+            // New version is available. Give user options for installing it.
+            switch (EditorUtility.DisplayDialogComplex(
+                "Update Available",
+                $"Current Version: {NugetPreferences.NuGetForUnityVersion}\nLatest Version: {latestVersion}",
+                "Install Latest",
+                "Open Releases Page",
+                "Cancel"))
+            {
+                case 0: Application.OpenURL(latestVersionDownloadUrl); break;
+                case 1: Application.OpenURL(url); break;
+                case 2: break;
             }
         }
 
-        private static string GetLatestVersonFromReleasesHtml(string response, out string url)
+        private static string GetLatestVersionFromReleasesHtml(string response, out string url)
         {
             Regex hrefRegex = new Regex(@"<a href=""(?<url>.*NuGetForUnity\.(?<version>\d+\.\d+\.\d+)\.unitypackage)""");
             Match match = hrefRegex.Match(response);
@@ -489,7 +487,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
             scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
             EditorGUILayout.BeginVertical();
 
-            if (filteredUpdatePackages != null && filteredUpdatePackages.Count > 0)
+            if (filteredUpdatePackages is {Count: > 0})
             {
                 DrawPackages(filteredUpdatePackages);
             }
@@ -551,18 +549,19 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 DrawPackages(availablePackages);
             }
 
-            GUIStyle showMoreStyle = new GUIStyle();
-            if (Application.HasProLicense())
+            GUIStyle showMoreStyle = new GUIStyle
             {
-                showMoreStyle.normal.background = MakeTex(20, 20, new Color(0.05f, 0.05f, 0.05f));
-            }
-            else
-            {
-                showMoreStyle.normal.background = MakeTex(20, 20, new Color(0.4f, 0.4f, 0.4f));
-            }
+                normal =
+                {
+                    background = MakeTex(20, 20,
+                        Application.HasProLicense()
+                            ? new Color(0.05f, 0.05f, 0.05f)
+                            : new Color(0.4f, 0.4f, 0.4f))
+                }
+            };
 
             EditorGUILayout.BeginVertical(showMoreStyle);
-            // allow the user to dislay more results
+            // allow the user to display more results
             if (GUILayout.Button("Show More", GUILayout.Width(120)))
             {
                 numberToSkip += numberToGet;
@@ -597,15 +596,16 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// </summary>
         private void DrawOnlineHeader()
         {
-            GUIStyle headerStyle = new GUIStyle();
-            if (Application.HasProLicense())
+            GUIStyle headerStyle = new GUIStyle
             {
-                headerStyle.normal.background = MakeTex(20, 20, new Color(0.05f, 0.05f, 0.05f));
-            }
-            else
-            {
-                headerStyle.normal.background = MakeTex(20, 20, new Color(0.4f, 0.4f, 0.4f));
-            }
+                normal =
+                {
+                    background = MakeTex(20, 20,
+                        Application.HasProLicense()
+                            ? new Color(0.05f, 0.05f, 0.05f)
+                            : new Color(0.4f, 0.4f, 0.4f))
+                }
+            };
 
             EditorGUILayout.BeginVertical(headerStyle);
             {
@@ -666,15 +666,16 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// </summary>
         private void DrawInstalledHeader()
         {
-            GUIStyle headerStyle = new GUIStyle();
-            if (Application.HasProLicense())
+            GUIStyle headerStyle = new GUIStyle
             {
-                headerStyle.normal.background = MakeTex(20, 20, new Color(0.05f, 0.05f, 0.05f));
-            }
-            else
-            {
-                headerStyle.normal.background = MakeTex(20, 20, new Color(0.4f, 0.4f, 0.4f));
-            }
+                normal =
+                {
+                    background = MakeTex(20, 20,
+                        Application.HasProLicense()
+                            ? new Color(0.05f, 0.05f, 0.05f)
+                            : new Color(0.4f, 0.4f, 0.4f))
+                }
+            };
 
             EditorGUILayout.BeginVertical(headerStyle);
             {
@@ -710,15 +711,16 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// </summary>
         private void DrawUpdatesHeader()
         {
-            GUIStyle headerStyle = new GUIStyle();
-            if (Application.HasProLicense())
+            GUIStyle headerStyle = new GUIStyle
             {
-                headerStyle.normal.background = MakeTex(20, 20, new Color(0.05f, 0.05f, 0.05f));
-            }
-            else
-            {
-                headerStyle.normal.background = MakeTex(20, 20, new Color(0.4f, 0.4f, 0.4f));
-            }
+                normal =
+                {
+                    background = MakeTex(20, 20,
+                        Application.HasProLicense()
+                            ? new Color(0.05f, 0.05f, 0.05f)
+                            : new Color(0.4f, 0.4f, 0.4f))
+                }
+            };
 
             EditorGUILayout.BeginVertical(headerStyle);
             {
@@ -782,7 +784,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
             EditorGUILayout.EndVertical();
         }
 
-        Dictionary<string, bool> foldouts = new Dictionary<string, bool>();
+        readonly Dictionary<string, bool> foldouts = new();
 
         /// <summary>
         /// Draws the given <see cref="NugetPackage"/>.
@@ -815,14 +817,9 @@ namespace FreakshowStudio.NugetForUnity.Editor
                     rect.width = iconSize;
                     rect.height = iconSize;
 
-                    if (package.Icon != null)
-                    {
-                        GUI.DrawTexture(rect, package.Icon, ScaleMode.StretchToFill);
-                    }
-                    else
-                    {
-                        GUI.DrawTexture(rect, defaultIcon, ScaleMode.StretchToFill);
-                    }
+                    GUI.DrawTexture(rect,
+                        package.Icon != null ? package.Icon : defaultIcon,
+                        ScaleMode.StretchToFill);
 
                     rect.x = iconSize + 2 * padding;
                     rect.width = position.width / 2 - (iconSize + padding);
@@ -845,7 +842,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
 
                     if (!string.IsNullOrEmpty(package.Authors))
                     {
-                        string authorLabel = string.Format("by {0}", package.Authors);
+                        string authorLabel = $"by {package.Authors}";
                         Vector2 size = EditorStyles.label.CalcSize(new GUIContent(authorLabel));
                         GUI.Label(rect, authorLabel, EditorStyles.label);
                         rect.x += size.x;
@@ -853,7 +850,8 @@ namespace FreakshowStudio.NugetForUnity.Editor
 
                     if (package.DownloadCount > 0)
                     {
-                        string downloadLabel = string.Format("{0} downloads", package.DownloadCount.ToString("#,#"));
+                        string downloadLabel =
+                            $"{package.DownloadCount:#,#} downloads";
                         Vector2 size = EditorStyles.label.CalcSize(new GUIContent(downloadLabel));
                         GUI.Label(rect, downloadLabel, EditorStyles.label);
                         rect.x += size.x;
@@ -863,9 +861,9 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 GUILayout.FlexibleSpace();
                 if (installed != null && installed.Version != package.Version)
                 {
-                    GUILayout.Label(string.Format("Current Version {0}", installed.Version));
+                    GUILayout.Label($"Current Version {installed.Version}");
                 }
-                GUILayout.Label(string.Format("Version {0}", package.Version));
+                GUILayout.Label($"Version {package.Version}");
 
 
                 if (nugetPackages.Contains(package))
@@ -936,19 +934,18 @@ namespace FreakshowStudio.NugetForUnity.Editor
 
                     if (!package.Title.Equals(package.Id, StringComparison.InvariantCultureIgnoreCase))
                     {
-                        summary = string.Format("{0} - {1}", package.Title, summary);
+                        summary = $"{package.Title} - {summary}";
                     }
 
                     if (summary.Length >= 240)
                     {
-                        summary = string.Format("{0}...", summary.Substring(0, 237));
+                        summary = $"{summary.Substring(0, 237)}...";
                     }
 
                     EditorGUILayout.LabelField(summary);
 
-                    bool detailsFoldout;
-                    string detailsFoldoutId = string.Format("{0}.{1}", package.Id, "Details");
-                    if (!foldouts.TryGetValue(detailsFoldoutId, out detailsFoldout))
+                    string detailsFoldoutId = $"{package.Id}.Details";
+                    if (!foldouts.TryGetValue(detailsFoldoutId, out var detailsFoldout))
                     {
                         foldouts[detailsFoldoutId] = detailsFoldout;
                     }
@@ -989,29 +986,39 @@ namespace FreakshowStudio.NugetForUnity.Editor
                             NugetFrameworkGroup frameworkGroup = NugetHelper.GetBestDependencyFrameworkGroupForCurrentSettings(package);
                             foreach (var dependency in frameworkGroup.Dependencies)
                             {
-                                builder.Append(string.Format(" {0} {1};", dependency.Id, dependency.Version));
+                                builder.Append(
+                                    $" {dependency.Id} {dependency.Version};");
                             }
                             EditorGUILayout.Space();
-                            EditorGUILayout.LabelField(string.Format("Depends on:{0}", builder));
+                            EditorGUILayout.LabelField($"Depends on:{builder}");
                             EditorStyles.label.fontStyle = FontStyle.Normal;
                         }
 
                         // Create the style for putting a box around the 'Clone' button
-                        var cloneButtonBoxStyle = new GUIStyle("box");
-                        cloneButtonBoxStyle.stretchWidth = false;
-                        cloneButtonBoxStyle.margin.top = 0;
-                        cloneButtonBoxStyle.margin.bottom = 0;
-                        cloneButtonBoxStyle.padding.bottom = 4;
+                        var cloneButtonBoxStyle = new GUIStyle("box")
+                        {
+                            stretchWidth = false,
+                            margin = {top = 0, bottom = 0},
+                            padding = {bottom = 4},
+                        };
 
-                        var normalButtonBoxStyle = new GUIStyle(cloneButtonBoxStyle);
-                        normalButtonBoxStyle.normal.background = packageStyle.normal.background;
+                        var normalButtonBoxStyle =
+                            new GUIStyle(cloneButtonBoxStyle)
+                            {
+                                normal =
+                                {
+                                    background = packageStyle.normal.background,
+                                }
+                            };
 
                         bool showCloneWindow = openCloneWindows.Contains(package);
                         cloneButtonBoxStyle.normal.background = showCloneWindow ? contrastStyle.normal.background : packageStyle.normal.background;
 
-                        // Create a simillar style for the 'Clone' window
-                        var cloneWindowStyle = new GUIStyle(cloneButtonBoxStyle);
-                        cloneWindowStyle.padding = new RectOffset(6, 6, 2, 6);
+                        // Create a similar style for the 'Clone' window
+                        var cloneWindowStyle = new GUIStyle(cloneButtonBoxStyle)
+                        {
+                            padding = new RectOffset(6, 6, 2, 6),
+                        };
 
                         // Show button bar
                         EditorGUILayout.BeginHorizontal();
@@ -1121,9 +1128,11 @@ namespace FreakshowStudio.NugetForUnity.Editor
 
         public static void GUILayoutLink(string url)
         {
-            GUIStyle hyperLinkStyle = new GUIStyle(GUI.skin.label);
-            hyperLinkStyle.stretchWidth = false;
-            hyperLinkStyle.richText = true;
+            GUIStyle hyperLinkStyle = new GUIStyle(GUI.skin.label)
+            {
+                stretchWidth = false,
+                richText = true,
+            };
 
             string colorFormatString = "<color=#add8e6ff>{0}</color>";
 

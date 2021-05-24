@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -22,7 +23,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
         public List<NugetPackageSource> PackageSources { get; private set; }
 
         /// <summary>
-        /// Gets the currectly active package source that is defined in the NuGet.config file.
+        /// Gets the currently active package source that is defined in the NuGet.config file.
         /// Note: If the key/Name is set to "All" and the value/Path is set to "(Aggregate source)", all package sources are used.
         /// </summary>
         public NugetPackageSource ActivePackageSource { get; private set; }
@@ -113,7 +114,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
 
             XElement config = new XElement("config");
 
-            // save the un-expanded respository path
+            // save the un-expanded repository path
             addElement = new XElement("add");
             addElement.Add(new XAttribute("key", "repositoryPath"));
             addElement.Add(new XAttribute("value", savedRepositoryPath));
@@ -186,10 +187,12 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// <returns>The newly loaded <see cref="NugetConfigFile"/>.</returns>
         public static NugetConfigFile Load(string filePath)
         {
-            NugetConfigFile configFile = new NugetConfigFile();
-            configFile.PackageSources = new List<NugetPackageSource>();
-            configFile.InstallFromCache = true;
-            configFile.ReadOnlyPackageFiles = false;
+            NugetConfigFile configFile = new NugetConfigFile
+            {
+                PackageSources = new List<NugetPackageSource>(),
+                InstallFromCache = true,
+                ReadOnlyPackageFiles = false,
+            };
 
             XDocument file = XDocument.Load(filePath);
 
@@ -197,13 +200,14 @@ namespace FreakshowStudio.NugetForUnity.Editor
             NugetHelper.DisableWSAPExportSetting(filePath, false);
 
             // read the full list of package sources (some may be disabled below)
+            Debug.Assert(file.Root != null, "file.Root != null");
             XElement packageSources = file.Root.Element("packageSources");
             if (packageSources != null)
             {
                 var adds = packageSources.Elements("add");
                 foreach (var add in adds)
                 {
-                    configFile.PackageSources.Add(new NugetPackageSource(add.Attribute("key").Value, add.Attribute("value").Value));
+                    configFile.PackageSources.Add(new NugetPackageSource(add.Attribute("key")?.Value, add.Attribute("value")?.Value));
                 }
             }
 
@@ -212,7 +216,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
             if (activePackageSource != null)
             {
                 var add = activePackageSource.Element("add");
-                configFile.ActivePackageSource = new NugetPackageSource(add.Attribute("key").Value, add.Attribute("value").Value);
+                configFile.ActivePackageSource = new NugetPackageSource(add?.Attribute("key")?.Value, add?.Attribute("value")?.Value);
             }
 
             // disable all listed disabled package sources
@@ -222,8 +226,8 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 var adds = disabledPackageSources.Elements("add");
                 foreach (var add in adds)
                 {
-                    string name = add.Attribute("key").Value;
-                    string disabled = add.Attribute("value").Value;
+                    string name = add.Attribute("key")?.Value;
+                    string disabled = add.Attribute("value")?.Value;
                     if (String.Equals(disabled, "true", StringComparison.OrdinalIgnoreCase))
                     {
                         var source = configFile.PackageSources.FirstOrDefault(p => p.Name == name);
@@ -248,15 +252,15 @@ namespace FreakshowStudio.NugetForUnity.Editor
                         var adds = sourceElement.Elements("add");
                         foreach (var add in adds)
                         {
-                            if (string.Equals(add.Attribute("key").Value, "userName", StringComparison.OrdinalIgnoreCase))
+                            if (string.Equals(add.Attribute("key")?.Value, "userName", StringComparison.OrdinalIgnoreCase))
                             {
-                                string userName = add.Attribute("value").Value;
+                                string userName = add.Attribute("value")?.Value;
                                 source.UserName = userName;
                             }
 
-                            if (string.Equals(add.Attribute("key").Value, "clearTextPassword", StringComparison.OrdinalIgnoreCase))
+                            if (string.Equals(add.Attribute("key")?.Value, "clearTextPassword", StringComparison.OrdinalIgnoreCase))
                             {
-                                string password = add.Attribute("value").Value;
+                                string password = add.Attribute("value")?.Value;
                                 source.SavedPassword = password;
                             }
                         }
@@ -271,8 +275,8 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 var adds = config.Elements("add");
                 foreach (var add in adds)
                 {
-                    string key = add.Attribute("key").Value;
-                    string value = add.Attribute("value").Value;
+                    string key = add.Attribute("key")?.Value;
+                    string value = add.Attribute("value")?.Value;
 
                     if (String.Equals(key, "repositoryPath", StringComparison.OrdinalIgnoreCase))
                     {
@@ -321,7 +325,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
 <configuration>
     <packageSources>
        <clear/>
-       <add key=""NuGet"" value=""http://www.nuget.org/api/v2/"" />
+       <add key=""NuGet"" value=""https://www.nuget.org/api/v2/"" />
     </packageSources>
     <disabledPackageSources />
     <activePackageSource>
@@ -329,7 +333,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
     </activePackageSource>
     <config>
        <add key=""repositoryPath"" value=""./Packages"" />
-       <add key=""DefaultPushSource"" value=""http://www.nuget.org/api/v2/"" />
+       <add key=""DefaultPushSource"" value=""https://www.nuget.org/api/v2/"" />
     </config>
 </configuration>";
 

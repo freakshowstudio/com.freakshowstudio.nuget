@@ -127,7 +127,8 @@ namespace FreakshowStudio.NugetForUnity.Tests.Editor
             NugetHelper.InstallIdentifier(signalRClient);
             Assert.IsTrue(NugetHelper.IsInstalled(signalRClient), "The package was NOT installed: {0} {1}", signalRClient.Id, signalRClient.Version);
 
-            var directory45 = Path.Combine(NugetHelper.NugetConfigFile.RepositoryPath, string.Format("{0}.{1}\\lib\\net45", signalRClient.Id, signalRClient.Version));
+            var directory45 = Path.Combine(NugetHelper.NugetConfigFile.RepositoryPath,
+                $"{signalRClient.Id}.{signalRClient.Version}\\lib\\net45");
 
             // SignalR 2.2.2 only contains .NET 4.0 and .NET 4.5 libraries, so it should install .NET 4.5 when using .NET 4.6 in Unity, and be empty in other cases
             if (PlayerSettings.GetApiCompatibilityLevel(EditorUserBuildSettings.selectedBuildTargetGroup) == ApiCompatibilityLevel.NET_4_6) // 3 = NET_4_6

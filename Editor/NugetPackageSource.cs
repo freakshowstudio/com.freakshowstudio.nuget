@@ -37,7 +37,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 string path = Environment.ExpandEnvironmentVariables(SavedPath);
                 if (!path.StartsWith("http") && path != "(Aggregate source)" && !Path.IsPathRooted(path))
                 {
-                    path = Path.Combine(Path.GetDirectoryName(NugetHelper.NugetConfigFilePath), path);
+                    path = Path.Combine(Path.GetDirectoryName(NugetHelper.NugetConfigFilePath) ?? throw new InvalidOperationException(), path);
                 }
 
                 return path;
@@ -54,26 +54,17 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// <summary>
         /// Gets password, with the values of environment variables expanded.
         /// </summary>
-        public string ExpandedPassword
-        {
-            get
-            {
-                return SavedPassword != null ? Environment.ExpandEnvironmentVariables(SavedPassword) : null;
-            }
-        }
+        public string ExpandedPassword => SavedPassword != null ? Environment.ExpandEnvironmentVariables(SavedPassword) : null;
 
         public bool HasPassword
         {
-            get { return SavedPassword != null; }
+            get => SavedPassword != null;
 
             set
             {
                 if (value)
                 {
-                    if (SavedPassword == null)
-                    {
-                        SavedPassword = string.Empty; // Initialize newly-enabled password to empty string.
-                    }
+                    SavedPassword ??= string.Empty;
                 }
                 else
                 {
@@ -112,13 +103,14 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// <returns>The retrieved package, if there is one.  Null if no matching package was found.</returns>
         public List<NugetPackage> FindPackagesById(NugetPackageIdentifier package)
         {
-            List<NugetPackage> foundPackages = null;
+            List<NugetPackage> foundPackages;
 
             if (IsLocalPath)
             {
                 if (!package.HasVersionRange)
                 {
-                    string localPackagePath = Path.Combine(ExpandedPath, string.Format("./{0}.{1}.nupkg", package.Id, package.Version));
+                    string localPackagePath = Path.Combine(ExpandedPath,
+                        $"./{package.Id}.{package.Version}.nupkg");
                     if (File.Exists(localPackagePath))
                     {
                         NugetPackage localPackage = NugetPackage.FromNupkgFile(localPackagePath);
@@ -135,12 +127,13 @@ namespace FreakshowStudio.NugetForUnity.Editor
             else
             {
                 // See here: http://www.odata.org/documentation/odata-version-2-0/uri-conventions/
-                string url = string.Format("{0}FindPackagesById()?id='{1}'", ExpandedPath, package.Id);
+                string url =
+                    $"{ExpandedPath}FindPackagesById()?id='{package.Id}'";
                 
                 // Are we looking for a specific package?
                 if (!package.HasVersionRange)
                 {
-                    url = string.Format("{0}&$filter=Version eq '{1}'", url, package.Version);
+                    url = $"{url}&$filter=Version eq '{package.Version}'";
                 }
 
                 try
@@ -183,7 +176,8 @@ namespace FreakshowStudio.NugetForUnity.Editor
 
             if (IsLocalPath)
             {
-                string localPackagePath = Path.Combine(ExpandedPath, string.Format("./{0}.{1}.nupkg", package.Id, package.Version));
+                string localPackagePath = Path.Combine(ExpandedPath,
+                    $"./{package.Id}.{package.Version}.nupkg");
                 if (File.Exists(localPackagePath))
                 {
                     NugetPackage localPackage = NugetPackage.FromNupkgFile(localPackagePath);
@@ -193,7 +187,8 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 return null;
             }
 
-            string url = string.Format("{0}Packages(Id='{1}',Version='{2}')", ExpandedPath, package.Id, package.Version);
+            string url =
+                $"{ExpandedPath}Packages(Id='{package.Id}',Version='{package.Version}')";
             try
             {
                 return GetPackagesFromUrl(url, UserName, ExpandedPassword).First();
@@ -250,19 +245,20 @@ namespace FreakshowStudio.NugetForUnity.Editor
             url += "$orderby=DownloadCount desc&";
 
             // skip a certain number of entries
-            url += string.Format("$skip={0}&", numberToSkip);
+            url += $"$skip={numberToSkip}&";
 
             // show a certain number of entries
-            url += string.Format("$top={0}&", numberToGet);
+            url += $"$top={numberToGet}&";
 
             // apply the search term
-            url += string.Format("searchTerm='{0}'&", searchTerm);
+            url += $"searchTerm='{searchTerm}'&";
 
             // apply the target framework filters
             url += "targetFramework=''&";
 
             // should we include prerelease packages?
-            url += string.Format("includePrerelease={0}", includePrerelease.ToString().ToLower());
+            url +=
+                $"includePrerelease={includePrerelease.ToString().ToLower()}";
 
             try
             {
@@ -297,7 +293,8 @@ namespace FreakshowStudio.NugetForUnity.Editor
 
             if (Directory.Exists(path))
             {
-                string[] packagePaths = Directory.GetFiles(path, string.Format("*{0}*.nupkg", searchTerm));
+                string[] packagePaths = Directory.GetFiles(path,
+                    $"*{searchTerm}*.nupkg");
 
                 foreach (var packagePath in packagePaths)
                 {
@@ -346,7 +343,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
 
         /// <summary>
         /// Builds a list of NugetPackages from the XML returned from the HTTP GET request issued at the given URL.
-        /// Note that NuGet uses an Atom-feed (XML Syndicaton) superset called OData.
+        /// Note that NuGet uses an Atom-feed (XML Syndication) superset called OData.
         /// See here http://www.odata.org/documentation/odata-version-2-0/uri-conventions/
         /// </summary>
         /// <param name="url"></param>
@@ -360,7 +357,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
 
-            List<NugetPackage> packages = new List<NugetPackage>();
+            List<NugetPackage> packages;
 
             // Mono doesn't have a Certificate Authority, so we have to provide all validation manually.  Currently just accept anything.
             // See here: http://stackoverflow.com/questions/4926676/mono-webrequest-fails-with-https
@@ -384,7 +381,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
             }
 
             stopwatch.Stop();
-            NugetHelper.LogVerbose("Retreived {0} packages in {1} ms", packages.Count, stopwatch.ElapsedMilliseconds);
+            NugetHelper.LogVerbose("Retrieved {0} packages in {1} ms", packages.Count, stopwatch.ElapsedMilliseconds);
 
             return packages;
         }
@@ -425,9 +422,9 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// <param name="includePrerelease">True to include prerelease packages (alpha, beta, etc).</param>
         /// <param name="includeAllVersions">True to include older versions that are not the latest version.</param>
         /// <param name="targetFrameworks">The specific frameworks to target?</param>
-        /// <param name="versionContraints">The version constraints?</param>
+        /// <param name="versionConstraints">The version constraints?</param>
         /// <returns>A list of all updates available.</returns>
-        public List<NugetPackage> GetUpdates(IEnumerable<NugetPackage> installedPackages, bool includePrerelease = false, bool includeAllVersions = false, string targetFrameworks = "", string versionContraints = "")
+        public List<NugetPackage> GetUpdates(IEnumerable<NugetPackage> installedPackages, bool includePrerelease = false, bool includeAllVersions = false, string targetFrameworks = "", string versionConstraints = "")
         {
             if (IsLocalPath)
             {
@@ -466,7 +463,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
                     }
                 }
 
-                string url = string.Format("{0}GetUpdates()?packageIds='{1}'&versions='{2}'&includePrerelease={3}&includeAllVersions={4}&targetFrameworks='{5}'&versionConstraints='{6}'", ExpandedPath, packageIds, versions, includePrerelease.ToString().ToLower(), includeAllVersions.ToString().ToLower(), targetFrameworks, versionContraints);
+                string url = $"{ExpandedPath}GetUpdates()?packageIds='{packageIds}'&versions='{versions}'&includePrerelease={includePrerelease.ToString().ToLower()}&includeAllVersions={includeAllVersions.ToString().ToLower()}&targetFrameworks='{targetFrameworks}'&versionConstraints='{versionConstraints}'";
 
                 try
                 {
@@ -475,13 +472,12 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 }
                 catch (Exception e)
                 {
-                    WebException webException = e as WebException;
-                    HttpWebResponse webResponse = webException != null ? webException.Response as HttpWebResponse : null;
-                    if (webResponse != null && webResponse.StatusCode == HttpStatusCode.NotFound)
+                    HttpWebResponse webResponse = e is WebException webException ? webException.Response as HttpWebResponse : null;
+                    if (webResponse is {StatusCode: HttpStatusCode.NotFound})
                     {
                         // Some web services, such as VSTS don't support the GetUpdates API. Attempt to retrieve updates via FindPackagesById.
                         NugetHelper.LogVerbose("{0} not found. Falling back to FindPackagesById.", url);
-                        return GetUpdatesFallback(nugetPackages, includePrerelease, includeAllVersions, targetFrameworks, versionContraints);
+                        return GetUpdatesFallback(nugetPackages, includePrerelease, includeAllVersions, targetFrameworks, versionConstraints);
                     }
 
                     Debug.LogErrorFormat("Unable to retrieve package list from {0}\n{1}", url, e);
@@ -548,18 +544,18 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// <param name="includePrerelease">True to include prerelease packages (alpha, beta, etc).</param>
         /// <param name="includeAllVersions">True to include older versions that are not the latest version.</param>
         /// <param name="targetFrameworks">The specific frameworks to target?</param>
-        /// <param name="versionContraints">The version constraints?</param>
+        /// <param name="versionConstraints">The version constraints?</param>
         /// <returns>A list of all updates available.</returns>
-        private List<NugetPackage> GetUpdatesFallback(IEnumerable<NugetPackage> installedPackages, bool includePrerelease = false, bool includeAllVersions = false, string targetFrameworks = "", string versionContraints = "")
+        private List<NugetPackage> GetUpdatesFallback(IEnumerable<NugetPackage> installedPackages, bool includePrerelease = false, bool includeAllVersions = false, string targetFrameworks = "", string versionConstraints = "")
         {
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
-            Debug.Assert(string.IsNullOrEmpty(targetFrameworks) && string.IsNullOrEmpty(versionContraints)); // These features are not supported by this version of GetUpdates.
+            Debug.Assert(string.IsNullOrEmpty(targetFrameworks) && string.IsNullOrEmpty(versionConstraints)); // These features are not supported by this version of GetUpdates.
 
             List<NugetPackage> updates = new List<NugetPackage>();
             foreach (NugetPackage installedPackage in installedPackages)
             {
-                string versionRange = string.Format("({0},)", installedPackage.Version); // Minimum of Current ID (exclusive) with no maximum (exclusive).
+                string versionRange = $"({installedPackage.Version},)"; // Minimum of Current ID (exclusive) with no maximum (exclusive).
                 NugetPackageIdentifier id = new NugetPackageIdentifier(installedPackage.Id, versionRange);
                 List<NugetPackage> packageUpdates = FindPackagesById(id);
 
