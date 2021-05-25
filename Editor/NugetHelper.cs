@@ -571,16 +571,13 @@ namespace FreakshowStudio.NugetForUnity.Editor
         private static HashSet<string> _alreadyImportedLibs;
         private static HashSet<string> GetAlreadyImportedLibs()
         {
-            if (_alreadyImportedLibs == null)
-            {
-                string[] lookupPaths = GetAllLookupPaths();
-                IEnumerable<string> libNames = lookupPaths
-                    .SelectMany(directory => Directory.EnumerateFiles(directory, "*.dll", SearchOption.AllDirectories))
-                    .Select(Path.GetFileName)
-                    .Select(p => Path.ChangeExtension(p, null));
-                _alreadyImportedLibs = new HashSet<string>(libNames);
-                LogVerbose("Already imported libs: {0}", string.Join(", ", _alreadyImportedLibs));
-            }
+            string[] lookupPaths = GetAllLookupPaths();
+            IEnumerable<string> libNames = lookupPaths
+                .SelectMany(directory => Directory.EnumerateFiles(directory, "*.dll", SearchOption.AllDirectories))
+                .Select(Path.GetFileName)
+                .Select(p => Path.ChangeExtension(p, null));
+            _alreadyImportedLibs = new HashSet<string>(libNames);
+            LogVerbose("Already imported libs: {0}", string.Join(", ", _alreadyImportedLibs));
 
             return _alreadyImportedLibs;
         }
@@ -595,7 +592,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 Path.Combine(Directory.GetParent(executablePath)?.FullName ?? string.Empty, "Data")
             };
             var relativePaths = new[] {
-                Path.Combine("NetStandard",  "compat"),
+                Path.Combine("NetStandard",  "compat", "2.0.0"),
                 Path.Combine("MonoBleedingEdge", "lib", "mono")
             };
             var allPossiblePaths = roots
