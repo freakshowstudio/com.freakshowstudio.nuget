@@ -454,11 +454,10 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 }
             }
 
-            /*
             if (Directory.Exists(packageInstallDirectory + "/tools"))
             {
                 // Move the tools folder outside of the Unity Assets folder
-                string toolsInstallDirectory = Path.Combine(Application.dataPath, string.Format("../Packages/{0}.{1}/tools", package.Id, package.Version));
+                string toolsInstallDirectory = Path.Combine(Application.dataPath, string.Format("../Nuget/{0}.{1}/tools", package.Id, package.Version));
 
                 LogVerbose("Moving {0} to {1}", packageInstallDirectory + "/tools", toolsInstallDirectory);
 
@@ -470,7 +469,6 @@ namespace FreakshowStudio.NugetForUnity.Editor
 
                 Directory.Move(packageInstallDirectory + "/tools", toolsInstallDirectory);
             }
-            */
 
             // delete all PDB files since Unity uses Mono and requires MDB files, which causes it to output "missing MDB" errors
             DeleteAllFiles(packageInstallDirectory, "*.pdb");
