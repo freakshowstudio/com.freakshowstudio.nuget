@@ -25,35 +25,35 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// <summary>
         /// The titles of the tabs in the window.
         /// </summary>
-        private readonly string[] tabTitles = { "Dependency Tree", "Who Depends on Me?" };
+        private readonly string[] _tabTitles = { "Dependency Tree", "Who Depends on Me?" };
 
         /// <summary>
         /// The currently selected tab in the window.
         /// </summary>
-        private int currentTab;
+        private int _currentTab;
 
-        private int selectedPackageIndex = -1;
+        private int _selectedPackageIndex = -1;
 
         /// <summary>
         /// The list of packages that depend on the specified package.
         /// </summary>
-        private readonly List<NugetPackage> parentPackages = new();
+        private readonly List<NugetPackage> _parentPackages = new();
 
         /// <summary>
         /// The list of currently installed packages.
         /// </summary>
-        private List<NugetPackage> installedPackages;
+        private List<NugetPackage> _installedPackages;
 
         /// <summary>
         /// The array of currently installed package IDs.
         /// </summary>
-        private string[] installedPackageIds;
+        private string[] _installedPackageIds;
 
-        private readonly Dictionary<NugetPackage, bool> expanded = new();
+        private readonly Dictionary<NugetPackage, bool> _expanded = new();
 
-        private List<NugetPackage> roots;
+        private List<NugetPackage> _roots;
 
-        private Vector2 scrollPosition;
+        private Vector2 _scrollPosition;
 
         /// <summary>
         /// Called when enabling the window.
@@ -71,14 +71,14 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 EditorUtility.DisplayProgressBar("Building Dependency Tree", "Reading installed packages...", 0.5f);
 
                 NugetHelper.UpdateInstalledPackages();
-                installedPackages = NugetHelper.InstalledPackages.ToList();
+                _installedPackages = NugetHelper.InstalledPackages.ToList();
                 List<string> installedPackageNames = new List<string>();
 
-                foreach (NugetPackage package in installedPackages)
+                foreach (NugetPackage package in _installedPackages)
                 {
-                    if (!expanded.ContainsKey(package))
+                    if (!_expanded.ContainsKey(package))
                     {
-                        expanded.Add(package, false);
+                        _expanded.Add(package, false);
                     }
                     else
                     {
@@ -88,7 +88,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
                     installedPackageNames.Add(package.Id);
                 }
 
-                installedPackageIds = installedPackageNames.ToArray();
+                _installedPackageIds = installedPackageNames.ToArray();
 
                 BuildTree();
             }
@@ -105,15 +105,15 @@ namespace FreakshowStudio.NugetForUnity.Editor
         private void BuildTree()
         {
             // default all packages to being roots
-            roots = new List<NugetPackage>(installedPackages);
+            _roots = new List<NugetPackage>(_installedPackages);
 
             // remove a package as a root if another package is dependent on it
-            foreach (NugetPackage package in installedPackages)
+            foreach (NugetPackage package in _installedPackages)
             {
                 NugetFrameworkGroup frameworkGroup = NugetHelper.GetBestDependencyFrameworkGroupForCurrentSettings(package);
                 foreach (NugetPackageIdentifier dependency in frameworkGroup.Dependencies)
                 {
-                    roots.RemoveAll(p => p.Id == dependency.Id);
+                    _roots.RemoveAll(p => p.Id == dependency.Id);
                 }
             }
         }
@@ -123,13 +123,13 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// </summary>
         protected void OnGUI()
         {
-            currentTab = GUILayout.Toolbar(currentTab, tabTitles);
+            _currentTab = GUILayout.Toolbar(_currentTab, _tabTitles);
 
-            switch (currentTab)
+            switch (_currentTab)
             {
                 case 0:
-                    scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
-                    foreach (NugetPackage package in roots)
+                    _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
+                    foreach (NugetPackage package in _roots)
                     {
                         DrawPackage(package);
                     }
@@ -142,23 +142,23 @@ namespace FreakshowStudio.NugetForUnity.Editor
                     EditorStyles.label.fontStyle = FontStyle.Normal;
                     EditorStyles.label.fontSize = 10;
                     EditorGUI.indentLevel++;
-                    int newIndex = EditorGUILayout.Popup(selectedPackageIndex, installedPackageIds);
+                    int newIndex = EditorGUILayout.Popup(_selectedPackageIndex, _installedPackageIds);
                     EditorGUI.indentLevel--;
 
-                    if (newIndex != selectedPackageIndex)
+                    if (newIndex != _selectedPackageIndex)
                     {
-                        selectedPackageIndex = newIndex;
+                        _selectedPackageIndex = newIndex;
 
-                        parentPackages.Clear();
-                        NugetPackage selectedPackage = installedPackages[selectedPackageIndex];
-                        foreach (var package in installedPackages)
+                        _parentPackages.Clear();
+                        NugetPackage selectedPackage = _installedPackages[_selectedPackageIndex];
+                        foreach (var package in _installedPackages)
                         {
                             NugetFrameworkGroup frameworkGroup = NugetHelper.GetBestDependencyFrameworkGroupForCurrentSettings(package);
                             foreach (var dependency in frameworkGroup.Dependencies)
                             {
                                 if (dependency.Id == selectedPackage.Id)
                                 {
-                                    parentPackages.Add(package);
+                                    _parentPackages.Add(package);
                                 }
                             }
                         }
@@ -171,15 +171,15 @@ namespace FreakshowStudio.NugetForUnity.Editor
                     EditorStyles.label.fontStyle = FontStyle.Normal;
                     EditorStyles.label.fontSize = 10;
 
-                    scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
+                    _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
                     EditorGUI.indentLevel++;
-                    if (parentPackages.Count <= 0)
+                    if (_parentPackages.Count <= 0)
                     {
                         EditorGUILayout.LabelField("NONE");
                     }
                     else
                     {
-                        foreach (var parent in parentPackages)
+                        foreach (var parent in _parentPackages)
                         {
                             //EditorGUILayout.LabelField(string.Format("{0} {1}", parent.Id, parent.Version));
                             DrawPackage(parent);
@@ -193,7 +193,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
 
         private void DrawDependency(NugetPackageIdentifier dependency)
         {
-            NugetPackage fullDependency = installedPackages.Find(p => p.Id == dependency.Id);
+            NugetPackage fullDependency = _installedPackages.Find(p => p.Id == dependency.Id);
             if (fullDependency != null)
             {
                 DrawPackage(fullDependency);
@@ -208,10 +208,10 @@ namespace FreakshowStudio.NugetForUnity.Editor
         {
             if (package.Dependencies is {Count: > 0})
             {
-                expanded[package] = EditorGUILayout.Foldout(expanded[package],
+                _expanded[package] = EditorGUILayout.Foldout(_expanded[package],
                     $"{package.Id} {package.Version}");
 
-                if (expanded[package])
+                if (_expanded[package])
                 {
                     EditorGUI.indentLevel++;
 
