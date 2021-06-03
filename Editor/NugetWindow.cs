@@ -27,7 +27,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// <summary>
         /// The current position of the scroll bar in the GUI.
         /// </summary>
-        private Vector2 scrollPosition;
+        private Vector2 _scrollPosition;
 
         /// <summary>
         /// The list of NugetPackages available to install.
@@ -44,54 +44,54 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// <summary>
         /// The filtered list of package updates available.
         /// </summary>
-        private List<NugetPackage> filteredUpdatePackages = new List<NugetPackage>();
+        private List<NugetPackage> _filteredUpdatePackages = new List<NugetPackage>();
 
         /// <summary>
         /// True to show all old package versions.  False to only show the latest version.
         /// </summary>
-        private bool showAllOnlineVersions;
+        private bool _showAllOnlineVersions;
 
         /// <summary>
         /// True to show beta and alpha package versions.  False to only show stable versions.
         /// </summary>
-        private bool showOnlinePrerelease;
+        private bool _showOnlinePrerelease;
 
         /// <summary>
         /// True to show all old package versions.  False to only show the latest version.
         /// </summary>
-        private bool showAllUpdateVersions;
+        private bool _showAllUpdateVersions;
 
         /// <summary>
         /// True to show beta and alpha package versions.  False to only show stable versions.
         /// </summary>
-        private bool showPrereleaseUpdates;
+        private bool _showPrereleaseUpdates;
 
         /// <summary>
         /// The search term to search the online packages for.
         /// </summary>
-        private string onlineSearchTerm = "Search";
+        private string _onlineSearchTerm = "Search";
 
         /// <summary>
         /// The search term to search the installed packages for.
         /// </summary>
-        private string installedSearchTerm = "Search";
+        private string _installedSearchTerm = "Search";
 
         /// <summary>
         /// The search term in progress while it is being typed into the search box.
         /// We wait until the Enter key or Search button is pressed before searching in order
         /// to match the way that the Online and Updates searches work.
         /// </summary>
-        private string installedSearchTermEditBox = "Search";
+        private string _installedSearchTermEditBox = "Search";
 
         /// <summary>
         /// The search term to search the update packages for.
         /// </summary>
-        private string updatesSearchTerm = "Search";
+        private string _updatesSearchTerm = "Search";
 
         /// <summary>
         /// The number of packages to get from the request to the server.
         /// </summary>
-        private int numberToGet = 15;
+        private const int NumberToGet = 15;
 
         /// <summary>
         /// The number of packages to skip when requesting a list of packages from the server.  This is used to get a new group of packages.
@@ -102,12 +102,12 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// <summary>
         /// The currently selected tab in the window.
         /// </summary>
-        private int currentTab;
+        private int _currentTab;
 
         /// <summary>
         /// The titles of the tabs in the window.
         /// </summary>
-        private readonly string[] tabTitles = { "Online", "Installed", "Updates" };
+        private readonly string[] _tabTitles = { "Online", "Installed", "Updates" };
 
         /// <summary>
         /// The default icon to display for packages.
@@ -118,16 +118,16 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// <summary>
         /// Used to keep track of which packages the user has opened the clone window on.
         /// </summary>
-        private readonly HashSet<NugetPackage> openCloneWindows = new();
+        private readonly HashSet<NugetPackage> _openCloneWindows = new();
 
         private IEnumerable<NugetPackage> FilteredInstalledPackages
         {
             get
             {
-                if (installedSearchTerm == "Search")
+                if (_installedSearchTerm == "Search")
                     return NugetHelper.InstalledPackages;
 
-                return NugetHelper.InstalledPackages.Where(x => x.Id.ToLower().Contains(installedSearchTerm) || x.Title.ToLower().Contains(installedSearchTerm)).ToList();
+                return NugetHelper.InstalledPackages.Where(x => x.Id.ToLower().Contains(_installedSearchTerm) || x.Title.ToLower().Contains(_installedSearchTerm)).ToList();
             }
         }
 
@@ -382,7 +382,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// </summary>
         private void UpdateOnlinePackages()
         {
-            availablePackages = NugetHelper.Search(onlineSearchTerm != "Search" ? onlineSearchTerm : string.Empty, showAllOnlineVersions, showOnlinePrerelease, numberToGet, numberToSkip);
+            availablePackages = NugetHelper.Search(_onlineSearchTerm != "Search" ? _onlineSearchTerm : string.Empty, _showAllOnlineVersions, _showOnlinePrerelease, NumberToGet, numberToSkip);
         }
 
         /// <summary>
@@ -391,12 +391,12 @@ namespace FreakshowStudio.NugetForUnity.Editor
         private void UpdateUpdatePackages()
         {
             // get any available updates for the installed packages
-            updatePackages = NugetHelper.GetUpdates(NugetHelper.InstalledPackages, showPrereleaseUpdates, showAllUpdateVersions);
-            filteredUpdatePackages = updatePackages;
+            updatePackages = NugetHelper.GetUpdates(NugetHelper.InstalledPackages, _showPrereleaseUpdates, _showAllUpdateVersions);
+            _filteredUpdatePackages = updatePackages;
 
-            if (updatesSearchTerm != "Search")
+            if (_updatesSearchTerm != "Search")
             {
-                filteredUpdatePackages = updatePackages.Where(x => x.Id.ToLower().Contains(updatesSearchTerm) || x.Title.ToLower().Contains(updatesSearchTerm)).ToList();
+                _filteredUpdatePackages = updatePackages.Where(x => x.Id.ToLower().Contains(_updatesSearchTerm) || x.Title.ToLower().Contains(_updatesSearchTerm)).ToList();
             }
         }
 
@@ -426,14 +426,14 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// </summary>
         protected void OnGUI()
         {
-            int selectedTab = GUILayout.Toolbar(currentTab, tabTitles);
+            int selectedTab = GUILayout.Toolbar(_currentTab, _tabTitles);
 
-            if (selectedTab != currentTab)
+            if (selectedTab != _currentTab)
                 OnTabChanged();
 
-            currentTab = selectedTab;
+            _currentTab = selectedTab;
 
-            switch (currentTab)
+            switch (_currentTab)
             {
                 case 0:
                     DrawOnline();
@@ -449,7 +449,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
 
         private void OnTabChanged()
         {
-            openCloneWindows.Clear();
+            _openCloneWindows.Clear();
         }
 
         /// <summary>
@@ -484,12 +484,12 @@ namespace FreakshowStudio.NugetForUnity.Editor
             DrawUpdatesHeader();
 
             // display all of the installed packages
-            scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
+            _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
             EditorGUILayout.BeginVertical();
 
-            if (filteredUpdatePackages is {Count: > 0})
+            if (_filteredUpdatePackages is {Count: > 0})
             {
-                DrawPackages(filteredUpdatePackages);
+                DrawPackages(_filteredUpdatePackages);
             }
             else
             {
@@ -512,7 +512,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
             DrawInstalledHeader();
 
             // display all of the installed packages
-            scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
+            _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
             EditorGUILayout.BeginVertical();
 
             List<NugetPackage> filteredInstalledPackages = FilteredInstalledPackages.ToList();
@@ -541,7 +541,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
             DrawOnlineHeader();
 
             // display all of the packages
-            scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
+            _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
             EditorGUILayout.BeginVertical();
 
             if (availablePackages != null)
@@ -564,8 +564,8 @@ namespace FreakshowStudio.NugetForUnity.Editor
             // allow the user to display more results
             if (GUILayout.Button("Show More", GUILayout.Width(120)))
             {
-                numberToSkip += numberToGet;
-                availablePackages.AddRange(NugetHelper.Search(onlineSearchTerm != "Search" ? onlineSearchTerm : string.Empty, showAllOnlineVersions, showOnlinePrerelease, numberToGet, numberToSkip));
+                numberToSkip += NumberToGet;
+                availablePackages.AddRange(NugetHelper.Search(_onlineSearchTerm != "Search" ? _onlineSearchTerm : string.Empty, _showAllOnlineVersions, _showOnlinePrerelease, NumberToGet, numberToSkip));
             }
             EditorGUILayout.EndVertical();
 
@@ -611,10 +611,10 @@ namespace FreakshowStudio.NugetForUnity.Editor
             {
                 EditorGUILayout.BeginHorizontal();
                 {
-                    bool showAllVersionsTemp = EditorGUILayout.Toggle("Show All Versions", showAllOnlineVersions);
-                    if (showAllVersionsTemp != showAllOnlineVersions)
+                    bool showAllVersionsTemp = EditorGUILayout.Toggle("Show All Versions", _showAllOnlineVersions);
+                    if (showAllVersionsTemp != _showAllOnlineVersions)
                     {
-                        showAllOnlineVersions = showAllVersionsTemp;
+                        _showAllOnlineVersions = showAllVersionsTemp;
                         UpdateOnlinePackages();
                     }
 
@@ -625,10 +625,10 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 }
                 EditorGUILayout.EndHorizontal();
 
-                bool showPrereleaseTemp = EditorGUILayout.Toggle("Show Prerelease", showOnlinePrerelease);
-                if (showPrereleaseTemp != showOnlinePrerelease)
+                bool showPrereleaseTemp = EditorGUILayout.Toggle("Show Prerelease", _showOnlinePrerelease);
+                if (showPrereleaseTemp != _showOnlinePrerelease)
                 {
-                    showOnlinePrerelease = showPrereleaseTemp;
+                    _showOnlinePrerelease = showPrereleaseTemp;
                     UpdateOnlinePackages();
                 }
 
@@ -638,7 +638,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 {
                     int oldFontSize = GUI.skin.textField.fontSize;
                     GUI.skin.textField.fontSize = 25;
-                    onlineSearchTerm = EditorGUILayout.TextField(onlineSearchTerm, GUILayout.Height(30));
+                    _onlineSearchTerm = EditorGUILayout.TextField(_onlineSearchTerm, GUILayout.Height(30));
 
                     if (GUILayout.Button("Search", GUILayout.Width(100), GUILayout.Height(28)))
                     {
@@ -685,7 +685,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 {
                     int oldFontSize = GUI.skin.textField.fontSize;
                     GUI.skin.textField.fontSize = 25;
-                    installedSearchTermEditBox = EditorGUILayout.TextField(installedSearchTermEditBox, GUILayout.Height(30));
+                    _installedSearchTermEditBox = EditorGUILayout.TextField(_installedSearchTermEditBox, GUILayout.Height(30));
 
                     if (GUILayout.Button("Search", GUILayout.Width(100), GUILayout.Height(28)))
                     {
@@ -700,7 +700,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 // search only if the enter key is pressed
                 if (enterPressed)
                 {
-                    installedSearchTerm = installedSearchTermEditBox;
+                    _installedSearchTerm = _installedSearchTermEditBox;
                 }
             }
             EditorGUILayout.EndVertical();
@@ -726,10 +726,10 @@ namespace FreakshowStudio.NugetForUnity.Editor
             {
                 EditorGUILayout.BeginHorizontal();
                 {
-                    bool showAllVersionsTemp = EditorGUILayout.Toggle("Show All Versions", showAllUpdateVersions);
-                    if (showAllVersionsTemp != showAllUpdateVersions)
+                    bool showAllVersionsTemp = EditorGUILayout.Toggle("Show All Versions", _showAllUpdateVersions);
+                    if (showAllVersionsTemp != _showAllUpdateVersions)
                     {
-                        showAllUpdateVersions = showAllVersionsTemp;
+                        _showAllUpdateVersions = showAllVersionsTemp;
                         UpdateUpdatePackages();
                     }
 
@@ -747,10 +747,10 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 }
                 EditorGUILayout.EndHorizontal();
 
-                bool showPrereleaseTemp = EditorGUILayout.Toggle("Show Prerelease", showPrereleaseUpdates);
-                if (showPrereleaseTemp != showPrereleaseUpdates)
+                bool showPrereleaseTemp = EditorGUILayout.Toggle("Show Prerelease", _showPrereleaseUpdates);
+                if (showPrereleaseTemp != _showPrereleaseUpdates)
                 {
-                    showPrereleaseUpdates = showPrereleaseTemp;
+                    _showPrereleaseUpdates = showPrereleaseTemp;
                     UpdateUpdatePackages();
                 }
 
@@ -760,7 +760,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 {
                     int oldFontSize = GUI.skin.textField.fontSize;
                     GUI.skin.textField.fontSize = 25;
-                    updatesSearchTerm = EditorGUILayout.TextField(updatesSearchTerm, GUILayout.Height(30));
+                    _updatesSearchTerm = EditorGUILayout.TextField(_updatesSearchTerm, GUILayout.Height(30));
 
                     if (GUILayout.Button("Search", GUILayout.Width(100), GUILayout.Height(28)))
                     {
@@ -775,16 +775,16 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 // search only if the enter key is pressed
                 if (enterPressed)
                 {
-                    if (updatesSearchTerm != "Search")
+                    if (_updatesSearchTerm != "Search")
                     {
-                        filteredUpdatePackages = updatePackages.Where(x => x.Id.ToLower().Contains(updatesSearchTerm) || x.Title.ToLower().Contains(updatesSearchTerm)).ToList();
+                        _filteredUpdatePackages = updatePackages.Where(x => x.Id.ToLower().Contains(_updatesSearchTerm) || x.Title.ToLower().Contains(_updatesSearchTerm)).ToList();
                     }
                 }
             }
             EditorGUILayout.EndVertical();
         }
 
-        readonly Dictionary<string, bool> foldouts = new();
+        readonly Dictionary<string, bool> _foldouts = new();
 
         /// <summary>
         /// Draws the given <see cref="NugetPackage"/>.
@@ -945,12 +945,12 @@ namespace FreakshowStudio.NugetForUnity.Editor
                     EditorGUILayout.LabelField(summary);
 
                     string detailsFoldoutId = $"{package.Id}.Details";
-                    if (!foldouts.TryGetValue(detailsFoldoutId, out var detailsFoldout))
+                    if (!_foldouts.TryGetValue(detailsFoldoutId, out var detailsFoldout))
                     {
-                        foldouts[detailsFoldoutId] = detailsFoldout;
+                        _foldouts[detailsFoldoutId] = detailsFoldout;
                     }
                     detailsFoldout = EditorGUILayout.Foldout(detailsFoldout, "Details");
-                    foldouts[detailsFoldoutId] = detailsFoldout;
+                    _foldouts[detailsFoldoutId] = detailsFoldout;
 
                     if (detailsFoldout)
                     {
@@ -1011,7 +1011,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
                                 }
                             };
 
-                        bool showCloneWindow = openCloneWindows.Contains(package);
+                        bool showCloneWindow = _openCloneWindows.Contains(package);
                         cloneButtonBoxStyle.normal.background = showCloneWindow ? contrastStyle.normal.background : packageStyle.normal.background;
 
                         // Create a similar style for the 'Clone' window
@@ -1037,9 +1037,9 @@ namespace FreakshowStudio.NugetForUnity.Editor
                                         }
 
                                         if (showCloneWindow)
-                                            openCloneWindows.Add(package);
+                                            _openCloneWindows.Add(package);
                                         else
-                                            openCloneWindows.Remove(package);
+                                            _openCloneWindows.Remove(package);
                                     }
                                     EditorGUILayout.EndHorizontal();
                                 }

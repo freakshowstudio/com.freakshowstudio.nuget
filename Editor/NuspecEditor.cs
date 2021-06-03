@@ -17,22 +17,22 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// <summary>
         /// The full filepath to the .nuspec file that is being edited.
         /// </summary>
-        private string filepath;
+        private string _filepath;
 
         /// <summary>
         /// The NuspecFile that was loaded from the .nuspec file.
         /// </summary>
-        private NuspecFile nuspec;
+        private NuspecFile _nuspec;
 
         /// <summary>
         /// True if the dependencies list is expanded in the GUI.  False if it is collapsed.
         /// </summary>
-        private bool dependenciesExpanded = true;
+        private bool _dependenciesExpanded = true;
 
         /// <summary>
         /// The API key used to verify an acceptable package being pushed to the server.
         /// </summary>
-        private string apiKey = string.Empty;
+        private string _apiKey = string.Empty;
 
         /// <summary>
         /// Creates a new MyPackage.nuspec file.
@@ -150,9 +150,9 @@ namespace FreakshowStudio.NugetForUnity.Editor
 
                 if (isNuspec)
                 {
-                    filepath = assetFilepath;
-                    nuspec = NuspecFile.Load(filepath);
-                    titleContent = new GUIContent(Path.GetFileNameWithoutExtension(filepath));
+                    _filepath = assetFilepath;
+                    _nuspec = NuspecFile.Load(_filepath);
+                    titleContent = new GUIContent(Path.GetFileNameWithoutExtension(_filepath));
 
                     // force a repaint
                     Repaint();
@@ -165,12 +165,12 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// </summary>
         protected void OnGUI()
         {
-            if (nuspec == null)
+            if (_nuspec == null)
             {
                 Reload();
             }
 
-            if (nuspec == null)
+            if (_nuspec == null)
             {
                 titleContent = new GUIContent("[NO NUSPEC]");
                 EditorGUILayout.LabelField("There is no .nuspec file selected.");
@@ -178,23 +178,23 @@ namespace FreakshowStudio.NugetForUnity.Editor
             else
             {
                 EditorGUIUtility.labelWidth = 100;
-                nuspec.Id = EditorGUILayout.TextField(new GUIContent("ID", "The name of the package."), nuspec.Id);
-                nuspec.Version = EditorGUILayout.TextField(new GUIContent("Version", "The semantic version of the package."), nuspec.Version);
-                nuspec.Authors = EditorGUILayout.TextField(new GUIContent("Authors", "The authors of the package."), nuspec.Authors);
-                nuspec.Owners = EditorGUILayout.TextField(new GUIContent("Owners", "The owners of the package."), nuspec.Owners);
-                nuspec.LicenseUrl = EditorGUILayout.TextField(new GUIContent("License URL", "The URL for the license of the package."), nuspec.LicenseUrl);
-                nuspec.ProjectUrl = EditorGUILayout.TextField(new GUIContent("Project URL", "The URL of the package project."), nuspec.ProjectUrl);
-                nuspec.IconUrl = EditorGUILayout.TextField(new GUIContent("Icon URL", "The URL for the icon of the package."), nuspec.IconUrl);
-                nuspec.RequireLicenseAcceptance = EditorGUILayout.Toggle(new GUIContent("Require License Acceptance", "Does the package license need to be accepted before use?"), nuspec.RequireLicenseAcceptance);
-                nuspec.Description = EditorGUILayout.TextField(new GUIContent("Description", "The description of the package."), nuspec.Description);
-                nuspec.Summary = EditorGUILayout.TextField(new GUIContent("Summary", "The brief description of the package."), nuspec.Summary);
-                nuspec.ReleaseNotes = EditorGUILayout.TextField(new GUIContent("Release Notes", "The release notes for this specific version of the package."), nuspec.ReleaseNotes);
-                nuspec.Copyright = EditorGUILayout.TextField(new GUIContent("Copyright", "The copyright details for the package."), nuspec.Copyright);
-                nuspec.Tags = EditorGUILayout.TextField(new GUIContent("Tags", "The space-delimited list of tags and keywords that describe the package and aid discoverability of packages through search and filtering."), nuspec.Tags);
+                _nuspec.Id = EditorGUILayout.TextField(new GUIContent("ID", "The name of the package."), _nuspec.Id);
+                _nuspec.Version = EditorGUILayout.TextField(new GUIContent("Version", "The semantic version of the package."), _nuspec.Version);
+                _nuspec.Authors = EditorGUILayout.TextField(new GUIContent("Authors", "The authors of the package."), _nuspec.Authors);
+                _nuspec.Owners = EditorGUILayout.TextField(new GUIContent("Owners", "The owners of the package."), _nuspec.Owners);
+                _nuspec.LicenseUrl = EditorGUILayout.TextField(new GUIContent("License URL", "The URL for the license of the package."), _nuspec.LicenseUrl);
+                _nuspec.ProjectUrl = EditorGUILayout.TextField(new GUIContent("Project URL", "The URL of the package project."), _nuspec.ProjectUrl);
+                _nuspec.IconUrl = EditorGUILayout.TextField(new GUIContent("Icon URL", "The URL for the icon of the package."), _nuspec.IconUrl);
+                _nuspec.RequireLicenseAcceptance = EditorGUILayout.Toggle(new GUIContent("Require License Acceptance", "Does the package license need to be accepted before use?"), _nuspec.RequireLicenseAcceptance);
+                _nuspec.Description = EditorGUILayout.TextField(new GUIContent("Description", "The description of the package."), _nuspec.Description);
+                _nuspec.Summary = EditorGUILayout.TextField(new GUIContent("Summary", "The brief description of the package."), _nuspec.Summary);
+                _nuspec.ReleaseNotes = EditorGUILayout.TextField(new GUIContent("Release Notes", "The release notes for this specific version of the package."), _nuspec.ReleaseNotes);
+                _nuspec.Copyright = EditorGUILayout.TextField(new GUIContent("Copyright", "The copyright details for the package."), _nuspec.Copyright);
+                _nuspec.Tags = EditorGUILayout.TextField(new GUIContent("Tags", "The space-delimited list of tags and keywords that describe the package and aid discoverability of packages through search and filtering."), _nuspec.Tags);
 
-                dependenciesExpanded = EditorGUILayout.Foldout(dependenciesExpanded, new GUIContent("Dependencies", "The list of NuGet packages that this packages depends on."));
+                _dependenciesExpanded = EditorGUILayout.Foldout(_dependenciesExpanded, new GUIContent("Dependencies", "The list of NuGet packages that this packages depends on."));
 
-                if (dependenciesExpanded)
+                if (_dependenciesExpanded)
                 {
                     EditorGUILayout.BeginHorizontal();
                     {
@@ -220,17 +220,17 @@ namespace FreakshowStudio.NugetForUnity.Editor
                             }
 
                             // remove all existing dependencies from the .nuspec
-                            nuspec.Dependencies.Clear();
+                            _nuspec.Dependencies.Clear();
 
-                            nuspec.Dependencies.Add(new NugetFrameworkGroup());
-                            nuspec.Dependencies[0].Dependencies= roots.Cast<NugetPackageIdentifier>().ToList();
+                            _nuspec.Dependencies.Add(new NugetFrameworkGroup());
+                            _nuspec.Dependencies[0].Dependencies= roots.Cast<NugetPackageIdentifier>().ToList();
                         }
                     }
                     EditorGUILayout.EndHorizontal();
 
                     // display the dependencies
                     NugetPackageIdentifier toDelete = null;
-                    NugetFrameworkGroup nuspecFrameworkGroup = NugetHelper.GetBestDependencyFrameworkGroupForCurrentSettings(nuspec);
+                    NugetFrameworkGroup nuspecFrameworkGroup = NugetHelper.GetBestDependencyFrameworkGroupForCurrentSettings(_nuspec);
                     foreach (var dependency in nuspecFrameworkGroup.Dependencies)
                     {
                         EditorGUILayout.BeginHorizontal();
@@ -287,25 +287,25 @@ namespace FreakshowStudio.NugetForUnity.Editor
 
                 EditorGUILayout.Separator();
 
-                if (GUILayout.Button($"Save {Path.GetFileName(filepath)}"))
+                if (GUILayout.Button($"Save {Path.GetFileName(_filepath)}"))
                 {
-                    nuspec.Save(filepath);
+                    _nuspec.Save(_filepath);
                 }
 
                 EditorGUILayout.Separator();
 
-                if (GUILayout.Button(string.Format("Pack {0}.nupkg", Path.GetFileNameWithoutExtension(filepath))))
+                if (GUILayout.Button(string.Format("Pack {0}.nupkg", Path.GetFileNameWithoutExtension(_filepath))))
                 {
-                    NugetHelper.Pack(filepath);
+                    NugetHelper.Pack(_filepath);
                 }
 
                 EditorGUILayout.Separator();
 
-                apiKey = EditorGUILayout.TextField(new GUIContent("API Key", "The API key to use when pushing the package to the server"), apiKey);
+                _apiKey = EditorGUILayout.TextField(new GUIContent("API Key", "The API key to use when pushing the package to the server"), _apiKey);
 
                 if (GUILayout.Button("Push to Server"))
                 {
-                    NugetHelper.Push(nuspec, filepath, apiKey);
+                    NugetHelper.Push(_nuspec, _filepath, _apiKey);
                 }
             }
         }

@@ -56,7 +56,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// <summary>
         /// The incomplete path that is saved.  The path is expanded and made public via the property above.
         /// </summary>
-        private string savedRepositoryPath;
+        private string _savedRepositoryPath;
 
         /// <summary>
         /// Saves this NuGet.config file to disk.
@@ -117,7 +117,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
             // save the un-expanded repository path
             addElement = new XElement("add");
             addElement.Add(new XAttribute("key", "repositoryPath"));
-            addElement.Add(new XAttribute("value", savedRepositoryPath));
+            addElement.Add(new XAttribute("value", _savedRepositoryPath));
             config.Add(addElement);
 
             // save the default push source
@@ -280,7 +280,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
 
                     if (String.Equals(key, "repositoryPath", StringComparison.OrdinalIgnoreCase))
                     {
-                        configFile.savedRepositoryPath = value;
+                        configFile._savedRepositoryPath = value;
                         configFile.RepositoryPath = Environment.ExpandEnvironmentVariables(value);
 
                         if (!Path.IsPathRooted(configFile.RepositoryPath))
