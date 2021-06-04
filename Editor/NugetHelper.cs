@@ -1540,6 +1540,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// <returns>Stream containing the result.</returns>
         public static Stream RequestUrl(string url, string userName, string password, int? timeOut)
         {
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             HttpWebRequest getRequest = (HttpWebRequest)WebRequest.Create(url);
             if (timeOut.HasValue)
             {
