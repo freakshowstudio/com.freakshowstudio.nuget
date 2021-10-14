@@ -1,19 +1,19 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+    using System.Collections.Generic;
+    using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
-using System.IO.Compression;
-using System.Linq;
-using System.Net;
+    using System.IO;
+    using System.IO.Compression;
+    using System.Linq;
+    using System.Net;
 using System.Runtime.CompilerServices;
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.RegularExpressions;
+    using System.Security.Cryptography;
+    using System.Text;
+    using System.Text.RegularExpressions;
 
-using UnityEditor;
+    using UnityEditor;
 
-using UnityEngine;
+    using UnityEngine;
 
 
 [assembly: InternalsVisibleTo("com.freakshowstudio.NugetForUnity.Tests.Editor")]
@@ -261,21 +261,21 @@ namespace FreakshowStudio.NugetForUnity.Editor
 
             if (process != null)
             {
-                string error = process.StandardError.ReadToEnd();
-                if (!string.IsNullOrEmpty(error))
-                {
-                    Debug.LogError(error);
-                }
+            string error = process.StandardError.ReadToEnd();
+            if (!string.IsNullOrEmpty(error))
+            {
+                Debug.LogError(error);
+            }
             }
 
             if (process != null)
             {
-                string output = process.StandardOutput.ReadToEnd();
+            string output = process.StandardOutput.ReadToEnd();
                 if (logOutput && !string.IsNullOrEmpty(output))
-                {
-                    Debug.Log(output);
-                }
+            {
+                Debug.Log(output);
             }
+        }
         }
 
         /// <summary>
@@ -569,11 +569,11 @@ namespace FreakshowStudio.NugetForUnity.Editor
         private static HashSet<string> _alreadyImportedLibs;
         private static HashSet<string> GetAlreadyImportedLibs()
         {
-            string[] lookupPaths = GetAllLookupPaths();
-            IEnumerable<string> libNames = lookupPaths
-                .SelectMany(directory => Directory.EnumerateFiles(directory, "*.dll", SearchOption.AllDirectories))
-                .Select(Path.GetFileName)
-                .Select(p => Path.ChangeExtension(p, null));
+                string[] lookupPaths = GetAllLookupPaths();
+                IEnumerable<string> libNames = lookupPaths
+                    .SelectMany(directory => Directory.EnumerateFiles(directory, "*.dll", SearchOption.AllDirectories))
+                    .Select(Path.GetFileName)
+                    .Select(p => Path.ChangeExtension(p, null));
             _alreadyImportedLibs = new HashSet<string>(libNames);
             LogVerbose("Already imported libs: {0}", string.Join(", ", _alreadyImportedLibs));
 
@@ -1257,6 +1257,12 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// <param name="refreshAssets">True to refresh the Unity asset database.  False to ignore the changes (temporarily).</param>
         internal static bool InstallIdentifier(NugetPackageIdentifier package, bool refreshAssets = true)
         {
+            if (IsAlreadyImportedInEngine(package))
+            {
+                LogVerbose("Package {0} is already imported in engine, skipping install.", package);
+                return true;
+            }
+
             NugetPackage foundPackage = GetSpecificPackage(package);
 
             if (foundPackage != null)
@@ -1400,9 +1406,9 @@ namespace FreakshowStudio.NugetForUnity.Editor
 
                         Stream objStream = RequestUrl(package.DownloadUrl, package.PackageSource.UserName, package.PackageSource.ExpandedPassword, timeOut: null);
                         using Stream file = File.Create(cachedPackagePath);
-                        CopyStream(objStream, file);
+                            CopyStream(objStream, file);
+                        }
                     }
-                }
 
                 if (refreshAssets)
                 {
@@ -1425,10 +1431,11 @@ namespace FreakshowStudio.NugetForUnity.Editor
                             string filePath = Path.Combine(baseDirectory, entry.FullName);
                             string directory = Path.GetDirectoryName(filePath);
                             Directory.CreateDirectory(directory);
+                            if (Directory.Exists(filePath)) continue;
 
                             if (!entry.FullName.EndsWith("/"))
                             {
-                                entry.ExtractToFile(filePath, overwrite: true);
+                            entry.ExtractToFile(filePath, overwrite: true);
                             }
 
                             if (NugetConfigFile.ReadOnlyPackageFiles)
@@ -1639,12 +1646,13 @@ namespace FreakshowStudio.NugetForUnity.Editor
             string[] directories = Directory.GetDirectories(NugetConfigFile.RepositoryPath, "*", SearchOption.TopDirectoryOnly);
             foreach (string folder in directories)
             {
-                string name = Path.GetFileName(folder);
+                string pkgPath = Path.Combine(folder, $"{Path.GetFileName(folder)}.nupkg");
+                NugetPackage package = NugetPackage.FromNupkgFile(pkgPath);
+
                 bool installed = false;
-                foreach (NugetPackageIdentifier package in PackagesConfigFile.Packages)
+                foreach (NugetPackageIdentifier packageId in PackagesConfigFile.Packages)
                 {
-                    string packageName = $"{package.Id}.{package.Version}";
-                    if (name == packageName)
+                    if (packageId.CompareTo(package) == 0)
                     {
                         installed = true;
                         break;
@@ -1652,7 +1660,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 }
                 if (!installed)
                 {
-                    LogVerbose("---DELETE unnecessary package {0}", name);
+                    LogVerbose("---DELETE unnecessary package {0}", folder);
 
                     DeleteDirectory(folder);
                     DeleteFile(folder + ".meta");
@@ -1668,11 +1676,16 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// <returns>True if the given package is installed.  False if it is not.</returns>
         internal static bool IsInstalled(NugetPackageIdentifier package)
         {
+            if (IsAlreadyImportedInEngine(package))
+            {
+                return true;
+            }
+
             bool isInstalled = false;
 
             if (InstalledNugetPackages.TryGetValue(package.Id, out var installedPackage))
             {
-                isInstalled = package.Version == installedPackage.Version;
+                isInstalled = package.CompareVersion(installedPackage.Version) == 0;
             }
 
             return isInstalled;
@@ -1868,7 +1881,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 return response;
             }
 
-            response = GetCredentialFromProvider_Uncached(feedUri, true);
+                response = GetCredentialFromProvider_Uncached(feedUri, true);
             CachedCredentialsByFeedUri[feedUri] = response;
             return response;
         }

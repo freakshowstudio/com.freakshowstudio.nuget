@@ -52,7 +52,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// <param name="package">The NugetPackage to remove from the packages.config file.</param>
         public void RemovePackage(NugetPackageIdentifier package)
         {
-            Packages.Remove(package);
+            Packages.RemoveAll(p => p.CompareTo(package) == 0);
         }
 
         /// <summary>
