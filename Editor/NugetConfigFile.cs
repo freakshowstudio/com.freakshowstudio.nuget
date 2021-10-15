@@ -320,6 +320,12 @@ namespace FreakshowStudio.NugetForUnity.Editor
         /// <returns>The loaded <see cref="NugetConfigFile"/> loaded off of the newly created default file.</returns>
         public static NugetConfigFile CreateDefaultFile(string filePath)
         {
+            var directoryInfo = new FileInfo(filePath).Directory;
+            if (directoryInfo != null)
+            {
+                Directory.CreateDirectory(directoryInfo.FullName);
+            }
+
             const string contents =
 @"<?xml version=""1.0"" encoding=""utf-8""?>
 <configuration>
@@ -332,7 +338,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
        <add key=""All"" value=""(Aggregate source)"" />
     </activePackageSource>
     <config>
-       <add key=""repositoryPath"" value=""./Packages"" />
+       <add key=""repositoryPath"" value=""./NuGet/Packages"" />
        <add key=""DefaultPushSource"" value=""https://www.nuget.org/api/v2/"" />
     </config>
 </configuration>";
