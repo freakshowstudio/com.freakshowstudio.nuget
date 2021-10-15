@@ -148,6 +148,12 @@ namespace FreakshowStudio.NugetForUnity.Editor
                 }
             }
 
+            var directoryInfo = new FileInfo(filepath).Directory;
+            if (directoryInfo != null)
+            {
+                Directory.CreateDirectory(directoryInfo.FullName);
+            }
+
             packagesFile.Save(filepath);
 
             NugetHelper.DisableWSAPExportSetting(filepath, packageExists);
