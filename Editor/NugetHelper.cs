@@ -675,6 +675,9 @@ namespace FreakshowStudio.NugetForUnity.Editor
         private struct PriorityFramework { public int Priority; public string Framework; }
         private static readonly string[] UnityFrameworks = { "unity" };
         private static readonly string[] NetStandardFrameworks = {
+#if UNITY_2021_2_OR_NEWER
+            "netstandard21",
+#endif
             "netstandard20", "netstandard16", "netstandard15", "netstandard14", "netstandard13", "netstandard12", "netstandard11", "netstandard10" };
         private static readonly string[] Net4Unity2018Frameworks = { "net471", "net47" };
         private static readonly string[] Net4Unity2017Frameworks = { "net462", "net461", "net46", "net452", "net451", "net45", "net403", "net40", "net4" };
@@ -1418,7 +1421,7 @@ namespace FreakshowStudio.NugetForUnity.Editor
 
                 if (File.Exists(cachedPackagePath))
                 {
-                    string baseDirectory = Path.Combine(NugetConfigFile.RepositoryPath,
+                    string baseDirectory = Path.Combine("NuGet", NugetConfigFile.RepositoryPath,
                         $"{package.Id}.{package.Version}");
 
                     // unzip the package
